@@ -1,0 +1,19 @@
+{
+"projects": [{
+	"name": "project",
+	"type": "exe",
+	"buildSettings": [{
+		"name": "default",
+		"compiler": "clang++",
+		"targetDirectories": [{
+			"path": "minimumConfig/",
+			"fileFilters": [{
+				"extensions": ["cpp"]
+			}]
+		}],
+		"outputConfig": {
+			"name": "minimumBuild"
+		}
+	}]
+}]
+}

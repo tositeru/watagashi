@@ -1,0 +1,4 @@
+use build in clang path=/usr/local/lib/clang/7.0.0/
+clang++ testcase/minimumConfig/include/header.cpp -c -o testcase/intermediate/project_default/header.o 
+clang++ testcase/minimumConfig/main.cpp -c -o testcase/intermediate/project_default/main.o 
+clang++ -o testcase/output/project_default/project testcase/intermediate/project_default/header.o testcase/intermediate/project_default/main.o 
