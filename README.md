@@ -103,9 +103,9 @@ Enjoy programming!
 # License
 MIT
 
-## Advance Usage
+# Advance Usage
 
-# Regular Expression
+## Regular Expression
 You can use regular expression at part elements. ex) "path" of TargetDirectory, "extensions" of FileFilter or others.
 If you want to use regular expression, please add '@' to an prefix.
 ```
@@ -117,7 +117,7 @@ If you want to use regular expression, please add '@' to an prefix.
 ...
 ```
 
-# List Up Task
+## List Up Task
 You display files for the build by using "listup" task.
 ```
 watagashi -p test listup
@@ -127,9 +127,9 @@ And, you can confirm files for the build when you used the regular expression if
 watagashi -p test listup --check-regex \d+\.cpp
 ```
 
-# Process
+## Process
 Watagasi execute to preprocess before compile source files, preprocess before link or postprocess.
-Please describle string to express a command in "preprocess", "linkPreporcess" or "postprocess" of "BuildSetting" to set it.
+Please describle charactor string to express a command in "preprocess", "linkPreporcess" or "postprocess" of "BuildSetting" to set it.
 The current path of the command becomes the directory of the configuration file (.watagashi).
 ```
 "buildSettings": [{
@@ -152,7 +152,7 @@ If you want to execute those process in the compile time of a certain file, plea
 }]
 ```
 
-# Dependence Relationship Between Project
+## Dependence Relationship Between Project
 Watagashi can appoint dependence by describing "<project name>.<buildSetting name>" in "dependences" of "BuildSetting".
 When build project, it build dependence project earlier if a project of the dependence is non-update.
 ```
@@ -163,5 +163,9 @@ When build project, it build dependence project earlier if a project of the depe
 }]
 ```
 
-# Variable
-# Template
+## Variable
+## Template
+
+# Custom Compiler
+
+# Config File Details
