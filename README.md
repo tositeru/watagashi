@@ -95,7 +95,7 @@ watagashi install --output path/to/copy
 The explanation of basic usage is over.  
 Of course, supports "clean" and "rebuild" task.  
 Watagashi determine whether you compile a file by the update date and time automatically.
-Consider the include files, but the files in system include path be ignored.
+It consider the include files. But the files in system include path ignores.
 when those file edited, please rebuild.
 
 Enjoy programming!
@@ -103,5 +103,65 @@ Enjoy programming!
 # License
 MIT
 
-# Advance Usage
-TODO
+## Advance Usage
+
+# Regular Expression
+You can use regular expression at part elements. ex) "path" of TargetDirectory, "extensions" of FileFilter or others.
+If you want to use regular expression, please add '@' to an prefix.
+```
+...
+"targetDirectories": [{
+	"path": "@src|libSrc", // <- search files in "src" and "libSrc" directory.
+	...
+}]
+...
+```
+
+# List Up Task
+You display files for the build by using "listup" task.
+```
+watagashi -p test listup
+```
+And, you can confirm files for the build when you used the regular expression if you use "check-regex" option.
+```
+watagashi -p test listup --check-regex \d+\.cpp
+```
+
+# Process
+Watagasi execute to preprocess before compile source files, preprocess before link or postprocess.
+Please describle string to express a command in "preprocess", "linkPreporcess" or "postprocess" of "BuildSetting" to set it.
+The current path of the command becomes the directory of the configuration file (.watagashi).
+```
+"buildSettings": [{
+	"preprocess": "echo run preprocess!",
+	"linkPreprocess": "echo run link preprocess!",
+	"postprocess": "echo run postprocess!",
+}],
+...
+```
+
+If you want to execute those process in the compile time of a certain file, please describe "FileToProcess" in "FileFilter".
+```
+"FileFilters": [{
+	"extensions": ["cpp"]
+	"fileToProcesses": [{
+		"filepath": "main.cpp", // <- enable regular expression
+		"preprocess": "echo preprocess of main.cpp",
+		"postprocess": "echo postprocess of main.cpp"
+	}]
+}]
+```
+
+# Dependence Relationship Between Project
+Watagashi can appoint dependence by describing "<project name>.<buildSetting name>" in "dependences" of "BuildSetting".
+When build project, it build dependence project earlier if a project of the dependence is non-update.
+```
+"buildSettings": [{
+	...
+	"dependences": ["other_project.default"],
+	...
+}]
+```
+
+# Variable
+# Template
