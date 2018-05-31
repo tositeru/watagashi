@@ -127,6 +127,17 @@ And, you can confirm files for the build when you used the regular expression if
 watagashi -p test listup --check-regex \d+\.cpp
 ```
 
+## Dependence Relationship Between Project
+Watagashi can appoint dependence by describing "\<project name\>.\<buildSetting name\>" in "dependences" of "BuildSetting".
+When build project, it build dependence project earlier if a project of the dependence is non-update.
+```
+"buildSettings": [{
+	...
+	"dependences": ["other_project.default"],
+	...
+}]
+```
+
 ## Process
 Watagasi execute to preprocess before compile source files, preprocess before link or postprocess.
 Please describle charactor string to express a command in "preprocess", "linkPreporcess" or "postprocess" of "BuildSetting" to set it.
@@ -152,19 +163,83 @@ If you want to execute those process in the compile time of a certain file, plea
 }]
 ```
 
-## Dependence Relationship Between Project
-Watagashi can appoint dependence by describing "<project name>.<buildSetting name>" in "dependences" of "BuildSetting".
-When build project, it build dependence project earlier if a project of the dependence is non-update.
-```
-"buildSettings": [{
-	...
-	"dependences": ["other_project.default"],
-	...
-}]
-```
-
 ## Variable
+You can use the variable for each item of the configuration file.
+You write the variable like '${...}'.
+```
+...
+"preprocess": "echo output name is ${OUTPUT_NAME}",
+...
+```
+We call a variable to be usable without previous preparations a system variable.
+The usable system variable cahnges by a hierarchy to call.
+The low-order hierarychy can use the variable of a high-order hierarchy belonging to.
+
+And, You can refer to some items in the configuration file like a variable.
+You write the variable like '${\<project name\>.XXX}' or '${\<project name\>.\<buildSetting name\>.XXX}'.
+```
+...
+"preprocess": "echo ${otherProject.release.outputFilepath}",
+...
+```
+(By the way, there are still few kinds of the system variable.)
+
+Of course you can define the variable freely using "defineVariables".
+You can define "defineVariables" at all hierarchies.
+```
+...
+"defineVaraibles": [
+  {"Var1", "Apple"},
+  {"Var2", "Orange"}
+  {"Var3", "Grape"}
+],
+"preprocess": "echo ${Var1}",
+...
+```
+In addition, you can define the variable from command line.
+In that case, please divide the name and contents in '=' by all means.
+```
+watagashi -p test -V Global1=:-) -V Global2=:-<
+```
+The variable is evaluated from command line with the highest priority.
+And, the remainder is evaluated from the low-order hierarychy.
+
 ## Template
+Some hierachies can use a template data by using "templateName" item.
+You use "defineTemplates" for definition of template data.
+The definition of "defineTemplates" is possible from any hierarchy.
+But, the evaluation of template data finds from the high hierarchy.
+```
+...
+"defineTemplates": [{
+  "name": "commonBuildSetting",
+  "itemType": "project", // <- template data type
+  "compiler": "clang++",
+  "targetDirectories": [{
+    "path": "src",
+  }]
+}],
+"targetDirectories": [{
+  "name": "default",
+  "templateName": "commonBuildSetting",
+  "compileOptions": ["-g", "-O0"]
+  ...
+}, {
+  "name": "release",
+  "templateName": "commonBuildSetting",
+  "compileOptions": ["-O3"]
+  ...
+}],
+...
+```
+The item of the hierarchy using the template is set in the template's item.
+Of course you can set newly the item which template data don't have.
+When you already set the item in template data, as follows by an item.
+- overrwrite
+- append
+- ignore
+
+When a variable is used in template data, a variables is evaluated after the template was evaluated.
 
 # Custom Compiler
 
