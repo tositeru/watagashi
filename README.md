@@ -205,7 +205,7 @@ The variable is evaluated from command line with the highest priority.
 And, the remainder is evaluated from the low-order hierarychy.
 
 ## Template
-Some hierachies can use a template data by using "templateName" item.
+Some hierachies can use a template data by using "template" item.
 You use "defineTemplates" for definition of template data.
 The definition of "defineTemplates" is possible from any hierarchy.
 But, the evaluation of template data finds from the high hierarchy.
@@ -221,12 +221,12 @@ But, the evaluation of template data finds from the high hierarchy.
 }],
 "targetDirectories": [{
   "name": "default",
-  "templateName": "commonBuildSetting",
+  "template": "commonBuildSetting",
   "compileOptions": ["-g", "-O0"]
   ...
 }, {
   "name": "release",
-  "templateName": "commonBuildSetting",
+  "template": "commonBuildSetting",
   "compileOptions": ["-O3"]
   ...
 }],
@@ -246,6 +246,15 @@ Watagashi can customize the compiler. This compiler call the custom compiler.
 The custom compiler be defined "customCompiler" of "RootConfig".
 Please define the custom compiler in "customCompilers" of "RootConfig".
 Please appoint the name in "compiler" of "BuildSetting" to use the compiler which you defined.
+
+You are necessary to input the following items to customize compiler.
+- name
+- config each project type (exe, static, shared)
+	- config compile .obj and link .obj files
+		- used command
+		- input option
+		- output option
+		- etc
 ```
 {
   "customCompilers": [{
@@ -256,12 +265,13 @@ Please appoint the name in "compiler" of "BuildSetting" to use the compiler whic
 	"outputOption": "-o",
 	"commandPrefix": "-c",
 	"preprocesses": [{
-	  "type": "buildIn",
-	  "content": "checkUpdate" // <- build in task.
-	},{
-	  "type": "terminal",
-	  "content": "echo custom compiler example"
-	}],
+	    "type": "buildIn",
+	    "content": "checkUpdate" // <- build in task.
+	  },{
+	    "type": "terminal",
+	    "content": "echo custom compiler example"
+	  }
+	],
 	"postprocesses": [
 	  ...
 	]
@@ -289,13 +299,202 @@ Please appoint the name in "compiler" of "BuildSetting" to use the compiler whic
   }]
 }
 ```
-You are necessary to input the following items to customize compiler.
-- name
-- config each project type (exe, static, shared)
-	- config compile .obj and link .obj files
-		- used command
-		- input option
-		- output option
-		- etc
 
 # Config File Details
+## common item
+- "defineVariables"
+- "defineTemplates"
+```
+{ // common item example
+  "defineVariables": {
+    "var1": "Apple",
+    "var2": "Orange",
+    "var3": "Grape"
+  },
+  "defineTemplates": {...}
+}
+```
+## RootConfig
+- "projects"
+- "customCompilers",
+
+```
+{// RootConfig example
+  "projects": [...]
+  "customCompilers": [...]
+}
+```
+
+## Project
+- "name"
+- "template"
+- "type"
+- "buildSettings"
+- "version"
+- "minorNumber"
+- "releaseNumber"
+```
+{// Project example
+  "name": "Project",
+  "template": "",
+  "type": "exe", // or "static", "shared"
+  "buildSettings": [...],
+  "version": 1,
+  "minorNumber": 0,
+  "releaseNumber": 0,
+}
+```
+
+## BuildSetting
+- "name"
+- "template"
+- "compiler"
+- "targetDirectories"
+- "compileOptions"
+- "includeDirectories"
+- "linkLibraries"
+- "libraryDirectories"
+- "linkOptions"
+- "dependences"
+- "outputConfig"
+- "preprocess"
+- "linkPreprocess"
+- "postprocess"
+```
+{// BuildSetting example
+  "name": "default",
+  "template": "",
+  "compiler": "clang++",
+  "dependences": ["otherProject.release"]
+  "targetDirectories": [...],
+  "compileOptions": ["-O3"],
+  "includeDirectories": ["includePath"],
+  "linkLibraries": ["boost_system"],
+  "libraryDirectories": ["BoostLibPath"],
+  "linkOptions": [""],
+  "outputConfig": {...},
+  "preprocess": "echo Hello Watagashi!",
+  "linkPreprocess": "echo Hello Watagashi!!",
+  "postprocess": "echo Hello Watagashi!!!"
+}
+```
+
+## OutputConfig
+- "name"
+- "outputPath"
+- "intermediatePath"
+```
+{// OutputConfig example
+  "name": "Apple",
+  "outputPath": "Oragne",
+  "intermediatePath": "Grape"
+}
+```
+
+## TargetDirectory
+- "path"
+- "template"
+- "fileFilters"
+- "ignores"
+```
+{// TargetDirectory example
+  "path": "src",
+  "template": "",
+  "fileFilters": [...],
+  "ignores": ["dummy.cpp", "dummyDir/"]
+}
+```
+
+## FileFilter
+- "template"
+- "extensions"
+- "filesToProcess"
+```
+{// FileFilter example
+  "template": "",
+  "extensions": ["cpp", "cxx"],
+  "filesToProcess": [...]
+}
+```
+
+## FileToProcess
+- "filepath"
+- "template"
+- "compileOptions"
+- "preprocess"
+- "postprocess"
+```
+{// FilToProcess example
+  "filepath": "file.cpp",
+  "template": ""
+  "compileOptions": ["-Od"],
+  "preprocess": "echo Let's file to preprocess.",
+  "postprocess": "echo Let's file to postprocess.",
+}
+```
+
+## TemplateItem
+- "name"
+- "itemType"
+```
+{// TemplateItem example
+  "name": "common",
+  "itemType": "targetDirectory",
+  "path": "src",
+  ...
+}
+```
+
+## CustomCompiler 
+- "name"
+- "exe"
+- "static"
+- "shared"
+```
+{// CustomCompiler example
+  "name": "customCompiler",
+  "exe": {...},
+  "static": {...},
+  "shared": {...}
+}
+```
+
+## CompileTaskGroup
+- "compileObj"
+- "linkObj"
+```
+{// CompileTaskGroup example
+  "compileObj": {...},
+  "linkObj": {...}
+}
+```
+
+## CompileTask
+- "command"
+- "inputOption"
+- "outputOption"
+- "commandPrefix"
+- "commandSuffix"
+- "preprocesses"
+- "postprocesses"
+```
+{// CompileTask example
+  "command": "clang++",
+  "inputOption": "",
+  "outputOption": "-o"
+  "commandPrefix": "-c",
+  "commandSuffix": "",
+  "preprocesses": {...},
+  "postprocesses": {...}
+}
+```
+
+## CompileProcess
+- "type"
+- "content"
+```
+{
+  "type": "terminal",
+  "content": "echo custom complier process."
+}
+```
