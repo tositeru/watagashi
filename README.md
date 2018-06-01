@@ -242,5 +242,60 @@ When you already set the item in template data, as follows by an item.
 When a variable is used in template data, a variables is evaluated after the template was evaluated.
 
 # Custom Compiler
+Watagashi can customize the compiler. This compiler call the custom compiler.
+The custom compiler be defined "customCompiler" of "RootConfig".
+Please define the custom compiler in "customCompilers" of "RootConfig".
+Please appoint the name in "compiler" of "BuildSetting" to use the compiler which you defined.
+```
+{
+  "customCompilers": [{
+    "name": "myCompiler",
+    "exe": {
+      "compileObj": {
+        "command": "clang++",
+	"outputOption": "-o",
+	"commandPrefix": "-c",
+	"preprocesses": [{
+	  "type": "buildIn",
+	  "content": "checkUpdate" // <- build in task.
+	},{
+	  "type": "terminal",
+	  "content": "echo custom compiler example"
+	}],
+	"postprocesses": [
+	  ...
+	]
+      },
+      "linkObj": {
+        "command": "clang++",
+	"outputOption": "-o"
+      }
+    },
+    "static": {
+      ...
+    },
+    "shared": {
+      ...
+    }
+  }],
+  "projects": [{
+    "name": test,
+    "type": "exe",
+    "buildSettings": [{
+      "name": "default",
+      "compiler": "myCompiler", // <- specify my custom compiler
+      ...
+    }]
+  }]
+}
+```
+You are necessary to input the following items to customize compiler.
+- name
+- config each project type (exe, static, shared)
+	- config compile .obj and link .obj files
+		- used command
+		- input option
+		- output option
+		- etc
 
 # Config File Details
