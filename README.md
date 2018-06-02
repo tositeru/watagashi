@@ -302,8 +302,8 @@ You are necessary to input the following items to customize compiler.
 
 # Config File Details
 ## common item
-- "defineVariables"
-- "defineTemplates"
+- "defineVariables": define varaibles. You can't yse the variable in a variable.
+- "defineTemplates": define template datas. Please refer to "TemplateItem" for the details.
 ```
 { // common item example
   "defineVariables": {
@@ -311,28 +311,27 @@ You are necessary to input the following items to customize compiler.
     "var2": "Orange",
     "var3": "Grape"
   },
-  "defineTemplates": {...}
+  "defineTemplates": [...]
 }
 ```
 ## RootConfig
-- "projects"
-- "customCompilers",
-
+- "projects": define projects. Please refer to "Project" for the details.
+- "customCompilers": define custom compilers. Please refer to "CustomCompiler" for the details.
 ```
 {// RootConfig example
-  "projects": [...]
+  "projects": [...],
   "customCompilers": [...]
 }
 ```
 
 ## Project
-- "name"
-- "template"
-- "type"
-- "buildSettings"
-- "version"
-- "minorNumber"
-- "releaseNumber"
+- "name": project name. The variable of this inside is not evaluated.
+- "template": used template data name.
+- "type": project type. Please choose from among "exe", "static" or "shared".
+- "buildSettings": define buildSettings. Please refer to "BuildSetting" for the details.
+- "version": version number. In the case of project type is "shared", this item is used in "soname". The default value is 0.
+- "minorNumber": minor number. In the case of project type is "shared", this item is used in "soname". the default value is 0.
+- "releaseNumber": release number. In the case of project type is "shared", this item is used in "soname". the default value is 0.
 ```
 {// Project example
   "name": "Project",
@@ -346,20 +345,20 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## BuildSetting
-- "name"
-- "template"
-- "compiler"
-- "targetDirectories"
-- "compileOptions"
-- "includeDirectories"
-- "linkLibraries"
-- "libraryDirectories"
-- "linkOptions"
-- "dependences"
-- "outputConfig"
-- "preprocess"
-- "linkPreprocess"
-- "postprocess"
+- "name": buildSetting name. The variable of this inside is not evaluated.
+- "template": use template data name.
+- "compiler": use command name.
+- "targetDirectories": define targetDirectories. Please refer to "TargetDirectory" for the details.
+- "compileOptions": add options when compile .obj.
+- "includeDirectories": add include path when compile .obj. When watagashi confirm an update file to determine whether you compile it, it check the file in the pass which it appointed here.
+- "linkLibraries": add link libraries.
+- "libraryDirectories": add link library path.
+- "linkOptions": add options when link .obj's.
+- "dependences": dependence project. Please write it as follows, "\<project name\>.\<buildSetting name\>".
+- "outputConfig": define OutputConfig. Please refer to "OutputConfig" for the details.
+- "preprocess": specify a preprocess command at build.
+- "linkPreprocess": specify a link preprocess command at build.
+- "postprocess": specify a postprocess command at build.
 ```
 {// BuildSetting example
   "name": "default",
@@ -380,9 +379,9 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## OutputConfig
-- "name"
-- "outputPath"
-- "intermediatePath"
+- "name": output file name. When project type is "shared", this name is library name.
+- "outputPath": specify directory of output files.
+- "intermediatePath": specify directory of intermeidate files (.obj).
 ```
 {// OutputConfig example
   "name": "Apple",
@@ -392,10 +391,10 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## TargetDirectory
-- "path"
-- "template"
-- "fileFilters"
-- "ignores"
+- "path": target directory. This item can use regular expression.
+- "template": use template data name.
+- "fileFilters": define fileFilters. Please refer to "FileFilter" for the details.
+- "ignores": add ignored files. This item can use regular expression. When you ignore the direcoty, please touch '/' at the end.
 ```
 {// TargetDirectory example
   "path": "src",
@@ -406,9 +405,9 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## FileFilter
-- "template"
-- "extensions"
-- "filesToProcess"
+- "template": use template data name.
+- "extensions": filter extensions. This item can use regular expression.
+- "filesToProcess": define filesToProcesses. Please refer to "FileToProcess" for the details.
 ```
 {// FileFilter example
   "template": "",
@@ -418,11 +417,11 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## FileToProcess
-- "filepath"
-- "template"
-- "compileOptions"
-- "preprocess"
-- "postprocess"
+- "filepath": target filepath.
+- "template": use template data name.
+- "compileOptions": add options when compile .obj.
+- "preprocess": specify a preprocess command at build.
+- "postprocess": specify a postprocess command at build.
 ```
 {// FilToProcess example
   "filepath": "file.cpp",
@@ -434,8 +433,8 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## TemplateItem
-- "name"
-- "itemType"
+- "name": buildSetting name. The variable of this inside is not evaluated.
+- "itemType": template data type. Please choose from among "project", "buildSetting", "targetDirectory", "fileFilter", "fileToProcess", "customCompiler", "compileTask", "compileTaskGroup", "compileProcess", or "shared".
 ```
 {// TemplateItem example
   "name": "common",
@@ -446,10 +445,10 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## CustomCompiler 
-- "name"
-- "exe"
-- "static"
-- "shared"
+- "name": custom compiler name. The variable of this inside is not evaluated.
+- "exe": define compileTaskGroup when project type is "exe". Please refer to "CompileTaskGroup" for the details.
+- "static": define compileTaskGroup when project type is "static". Please refer to "CompileTaskGroup" for the details.
+- "shared": define compileTaskGroup when project type is "shared". Please refer to "CompileTaskGroup" for the details.
 ```
 {// CustomCompiler example
   "name": "customCompiler",
@@ -460,8 +459,8 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## CompileTaskGroup
-- "compileObj"
-- "linkObj"
+- "compileObj": define compileTask to compile obj file. Please refer to "CompileTask" for the details.
+- "linkObj": define compileTask to link obj files. Please refer to "CompileTask" for the details.
 ```
 {// CompileTaskGroup example
   "compileObj": {...},
@@ -470,28 +469,28 @@ You are necessary to input the following items to customize compiler.
 ```
 
 ## CompileTask
-- "command"
-- "inputOption"
-- "outputOption"
-- "commandPrefix"
-- "commandSuffix"
-- "preprocesses"
-- "postprocesses"
+- "command": use command name.
+- "inputOption": specify input file option.
+- "outputOption": specify output file option.
+- "commandPrefix": specify prefix of option.
+- "commandSuffix": specify suffix of option.
+- "preprocesses": define compileProcess to preprocess. Please refer to "CompileProcess" for the details.
+- "postprocesses": define compileProcess to postprocess. Please refer to "CompileProcess" for the details.
 ```
-{// CompileTask example
+{// CompileTask example -> clang++ -c \<input filepath/> -o <output filepath/> -Od
   "command": "clang++",
   "inputOption": "",
   "outputOption": "-o"
   "commandPrefix": "-c",
-  "commandSuffix": "",
+  "commandSuffix": "-Od",
   "preprocesses": {...},
   "postprocesses": {...}
 }
 ```
 
 ## CompileProcess
-- "type"
-- "content"
+- "type": process type. Please choose from among "terminal", or "buildIn".
+- "content": content of process. In the case type is "buildIn", this item can appoint "checkUpdate".
 ```
 {
   "type": "terminal",
