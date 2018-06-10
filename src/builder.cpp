@@ -12,6 +12,7 @@
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/map.hpp>
 
+#include "exception.hpp"
 #include "config.h"
 #include "programOptions.h"
 #include "utility.h"
@@ -182,16 +183,16 @@ void Builder::build(
 		t.join();
 	}
 	threads.clear();
-	
-	if(0 == processServer.failedCount()
-		&& 1 <= processServer.successCount() )
-	{
+
+	auto outputPath = buildSetting.makeOutputFilepath(env.configFilepath(), project);	
+	bool isLink = (0 == processServer.failedCount() && 1 <= processServer.successCount());
+	isLink = !fs::exists(outputPath);
+	if(isLink) {
 		this->linkObjs(env, linkTargets);
+		buildSetting.exePostprocess();
 	} else {
 		cout << "skip link" << endl;
 	}
-	
-	buildSetting.exePostprocess();
 	
 	env.clear();
 }
@@ -200,8 +201,6 @@ void Builder::clean(
 	const std::shared_ptr<config::RootConfig>& pRootConfig,
 	const std::shared_ptr<ProgramOptions>& pOpt)
 {
-	this->checkOutputPath(pRootConfig, pOpt);
-
 	BuildEnviroment env;
 	env.init(pRootConfig, pOpt);
 	
@@ -259,8 +258,6 @@ void Builder::install(
 	const std::shared_ptr<config::RootConfig>& pRootConfig,
 	const std::shared_ptr<ProgramOptions>& pOpt)
 {
-	this->checkOutputPath(pRootConfig, pOpt);
-
 	BuildEnviroment env;
 	env.init(pRootConfig, pOpt);
 	
@@ -272,7 +269,7 @@ void Builder::install(
 		project);
 	
 	if(!fs::exists(outputPath)) {
-		throw std::runtime_error("Failed to install... Don't exist \"" + outputPath.string() + "\".");
+		AWESOME_THROW(std::runtime_error) << "Failed to install... Don't exist \"" << outputPath.string() << "\".";
 	}
 	
 	fs::path installPath;
@@ -305,25 +302,6 @@ void Builder::showProjects(
 				});
 		});
 }
-
-void Builder::checkOutputPath(
-	const std::shared_ptr<config::RootConfig>& pRootConfig,
-	const std::shared_ptr<ProgramOptions>& pOpt)
-{
-	auto& project = pRootConfig->findProject(pOpt->targetProject);		
-	auto& buildSettings = project.findBuildSetting(pOpt->targetBuildSetting);
-	
-	auto& outputConfig = buildSettings.outputConfig;
-
-	fs::path buildConfigDirectory = pOpt->configFilepath;
-	buildConfigDirectory = buildConfigDirectory.parent_path();
-	if(fs::equivalent(outputConfig.outputPath, buildConfigDirectory)) {
-		throw std::runtime_error("Output path is not directory of build config file.");
-	}
-	if(fs::equivalent(outputConfig.intermediatePath, buildConfigDirectory)) {
-		throw std::runtime_error("Intermediate path is not directory of build config file.");
-	}
-}
 	
 Builder::BuildResult Builder::buildInDirectory(
 	std::vector<std::string>& outLinkTargets,
@@ -334,7 +312,7 @@ Builder::BuildResult Builder::buildInDirectory(
 	auto& buildSetting = env.buildSetting();
 	auto& targetDir = env.targetDirectory();
 	if(targetDir.fileFilters.empty()) {
-		throw std::runtime_error("Don't exsit fileFilter in TargetDirectory \""+ targetDir.path + "\"");
+		AWESOME_THROW(std::runtime_error) << "Don't exsit fileFilter in TargetDirectory \"" << targetDir.path << "\"";
 	}
 	
 	auto configFileDir = env.configFileDirectory();
@@ -377,8 +355,8 @@ Builder::BuildResult Builder::buildInDirectory(
 	try {
 		auto intermediatePath = buildSetting.makeIntermediatePath(env.configFilepath(), project);
 		if(!createDirectory(intermediatePath)) {
-			auto msg = "Failed to create intermediate directory. path=" + intermediatePath.string();
-			throw std::runtime_error(msg);
+			AWESOME_THROW(std::runtime_error)
+				<< "Failed to create intermediate directory. path=" << intermediatePath.string();
 		}
 		
 		boost::for_each(

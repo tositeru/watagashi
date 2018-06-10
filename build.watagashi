@@ -88,7 +88,8 @@
 			"pthread",
 			"boost_system",
 			"boost_filesystem",
-			"boost_program_options"
+			"boost_program_options",
+			"boost_stacktrace_basic"
 		],
 		"outputConfig": {
 			"name": "watagashi",

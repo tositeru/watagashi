@@ -3,6 +3,7 @@
 #include <list>
 #include <iostream>
 
+#include <boost/filesystem.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -11,8 +12,10 @@
 
 #include "utility.h"
 #include "includeFileAnalyzer.h"
+#include "exception.hpp"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 namespace watagasi
 {
@@ -186,7 +189,7 @@ void BuildEnviroment::init(
 	if(!this->setupIItem( this->mpProject.get(), this->mpProject->templateName, config::TemplateItemType::eProject,
 		[&](){ this->mVariables.initProject(*this->mpProject); }) )
 	{
-		throw std::runtime_error("failed to adapt template for project.");
+		AWESOME_THROW(std::runtime_error) << "failed to adapt template for project.";
 	}
 
 	this->mpBuildSetting = std::make_shared<decltype(this->mpBuildSetting)::element_type>(
@@ -194,14 +197,20 @@ void BuildEnviroment::init(
 	if(!this->setupIItem( this->mpBuildSetting.get(), this->mpBuildSetting->templateName, config::TemplateItemType::eBuildSetting,
 		[&](){ this->mVariables.initBuildSetting(*this->mpBuildSetting); }) )
 	{
-		throw std::runtime_error("failed to adapt template for buildSetting.");
+		AWESOME_THROW(std::runtime_error) << "failed to adapt template for buildSetting.";
 	}
 	
 	for(auto&& dir : this->mpBuildSetting->includeDirectories) {
-		dir = (this->configFileDirectory() / dir).string();
+		auto path = fs::path(dir);
+		if(path.is_relative()) {
+			dir = (this->configFileDirectory() / path).string();
+		}
 	}
 	for(auto&& dir : this->mpBuildSetting->libraryDirectories) {
-		dir = (this->configFileDirectory() / dir).string();
+		auto path = fs::path(dir);
+		if(path.is_relative()) {
+			dir = (this->configFileDirectory() / dir).string();
+		}
 	}
 }
 
@@ -266,7 +275,7 @@ void BuildEnviroment::setupTargetDirectory(
 	const config::TargetDirectory& targetDir)
 {
 	if(static_cast<size_t>(HIERARCHY::eTargetDirectory) != this->mpItemHierarchy.size()) {
-		throw std::runtime_error("BuildEnviroment::setupTargetDirectory(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "invalid item hierarchy...";
 	}
 
 	this->mpTargetDir = std::make_shared<
@@ -274,14 +283,14 @@ void BuildEnviroment::setupTargetDirectory(
 	if(!this->setupIItem( this->mpTargetDir.get(), this->mpTargetDir->templateName, config::TemplateItemType::eTargetDirectory,
 		[&](){ this->mVariables.initTargetDirectory(*this->mpTargetDir); }) )
 	{
-		throw std::runtime_error("failed to adapt template for targetDirectory.");
+		AWESOME_THROW(std::runtime_error) << "failed to adapt template for targetDirectory.";
 	}
 	
 	for(auto&& filter : this->mpTargetDir->fileFilters) {
 		if(!this->setupIItem( &filter, filter.templateName, config::TemplateItemType::eFileFilter,
 			[](){}, false) )
 		{
-			throw std::runtime_error("failed to adapt template for fileFilter.");
+			AWESOME_THROW(std::runtime_error) << "failed to adapt template for fileFilter.";
 		}
 	}
 }
@@ -289,7 +298,7 @@ void BuildEnviroment::setupTargetDirectory(
 void BuildEnviroment::setupFileFilter(const config::FileFilter& fileFilter)
 {
 	if(static_cast<size_t>(HIERARCHY::eFileFilter) != this->mpItemHierarchy.size()) {
-		throw std::runtime_error("BuildEnviroment::setupFileFilter(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "BuildEnviroment::setupFileFilter(): invalid item hierarchy...";
 	}
 
 	this->mpFileFilter = std::make_shared<
@@ -297,7 +306,7 @@ void BuildEnviroment::setupFileFilter(const config::FileFilter& fileFilter)
 	if(!this->setupIItem( this->mpFileFilter.get(), this->mpFileFilter->templateName, config::TemplateItemType::eFileFilter,
 		[&](){ this->mVariables.initFileFilter(*this->mpFileFilter); }) )
 	{
-		throw std::runtime_error("failed to adapt template for fileFilter.");
+		AWESOME_THROW(std::runtime_error) << "failed to adapt template for fileFilter.";
 	}
 }
 
@@ -305,7 +314,7 @@ void BuildEnviroment::setupFileToProcess(
 	const config::FileToProcess& fileToProcess)
 {
 	if(static_cast<size_t>(HIERARCHY::eFileToProcess) != this->mpItemHierarchy.size()) {
-		throw std::runtime_error("BuildEnviroment::setupFileToProcess(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "BuildEnviroment::setupFileToProcess(): invalid item hierarchy...";
 	}
 	
 	this->mpFileToProcess = std::make_shared<
@@ -313,7 +322,7 @@ void BuildEnviroment::setupFileToProcess(
 	if(!this->setupIItem( this->mpFileToProcess.get(), this->mpFileToProcess->templateName, config::TemplateItemType::eFileToProcess,
 		[&](){ this->mVariables.initFileToProcess(*this->mpFileToProcess); }) )
 	{
-		throw std::runtime_error("failed to adapt template for fileToProcess.");
+		AWESOME_THROW(std::runtime_error) << "failed to adapt template for fileToProcess.";
 	}
 }
 
@@ -369,7 +378,7 @@ bool BuildEnviroment::preprocessCompiler(
 	const boost::filesystem::path& outputFilepath)const
 {
 	if(!this->isExistItem(HIERARCHY::eBuildSetting)) {
-		throw std::runtime_error("BuildEnviroment::preprocessCompiler(): not initialize...");
+		AWESOME_THROW(std::runtime_error) << "BuildEnviroment::preprocessCompiler(): not initialize...";
 	}
 	
 	auto& compileTaskGroup = this->findCompileTaskGroup(this->mpProject->type, this->mpBuildSetting->compiler);
@@ -387,7 +396,7 @@ bool BuildEnviroment::postprocessCompiler(
 	const boost::filesystem::path& outputFilepath)const
 {
 	if(!this->isExistItem(HIERARCHY::eBuildSetting)) {
-		throw std::runtime_error("BuildEnviroment::postprocessCompiler(): not initialize...");
+		AWESOME_THROW(std::runtime_error) << "BuildEnviroment::postprocessCompiler(): not initialize...";
 	}
 	
 	auto& compileTaskGroup = this->findCompileTaskGroup(this->mpProject->type, this->mpBuildSetting->compiler);
@@ -437,7 +446,7 @@ bool BuildEnviroment::runBuildInProcess(
 		//return IncludeFileAnalyzer::sCheckUpdateTime(inputFilepath, outputFilepath, this->mBuildSetting.compileOptions);
 	}
 	
-	throw std::invalid_argument(("BuildEnviroment::runBuildInProcess(): unknown content... content=" + content).c_str());
+	AWESOME_THROW(std::invalid_argument) << "unknown content... content=" << content;
 	return false;
 }
 
@@ -446,7 +455,7 @@ std::string BuildEnviroment::createCompileCommand(
 	const boost::filesystem::path& outputFilepath)const
 {
 	if(!this->isExistItem(HIERARCHY::eBuildSetting)) {
-		throw std::runtime_error("BuildEnviroment::createCompileCommand(): not initialize...");
+		AWESOME_THROW(std::runtime_error) << "not initialize...";
 	}
 	
 	auto& compileTaskGroup = this->findCompileTaskGroup(this->mpProject->type, this->mpBuildSetting->compiler);
@@ -506,7 +515,7 @@ std::string BuildEnviroment::createLinkCommand(
 	const boost::filesystem::path& outputFilepath)const
 {
 	if(!this->isExistItem(HIERARCHY::eBuildSetting)) {
-		throw std::runtime_error("BuildEnviroment::createLinkCommand(): not initialize...");
+		AWESOME_THROW(std::runtime_error) << "not initialize...";
 	}
 	
 	auto& compileTaskGroup = this->findCompileTaskGroup(this->mpProject->type, this->mpBuildSetting->compiler);
@@ -561,10 +570,9 @@ std::string BuildEnviroment::createLinkCommand(
 				| boost::adaptors::transformed([&](const std::string& dependence){
 					auto keywards = split(dependence, '.');
 					if(2 != keywards.size()) {
-						std::stringstream msg;
-						msg << "\"" << dependence << "\" "
+						AWESOME_THROW(std::runtime_error)
+							<< "\"" << dependence << "\" "
 							<< "invalid keyward... please \"<project name>.<buildSetting name>\"";
-						throw std::runtime_error(msg.str());
 					}
 					auto& dependenceProject = this->mpRootConfig->findProject(keywards[0]);
 					if(config::Project::eExe == dependenceProject.type) {
@@ -609,16 +617,18 @@ const config::CompileTaskGroup& BuildEnviroment::findCompileTaskGroup(
 	}
 	
 	if(nullptr == pCompiler) {
-		throw std::invalid_argument(("BuildEnviroment::findCompileTaskGroup(): don't found customCompiler... name=" + compiler).c_str());
+		AWESOME_THROW(std::invalid_argument)
+			<< "don't found customCompiler... name=" << compiler;
 	}
 
 	switch(projectType) {
 	case config::Project::eExe: return pCompiler->exe;
 	case config::Project::eStaticLib: return pCompiler->staticLib;
 	case config::Project::eSharedLib: return pCompiler->sharedLib;
-	default:
-		throw std::invalid_argument(("BuildEnviroment::findCompileTaskGroup(): unknown project type... type=" + config::Project::toStr(projectType)).c_str());
 	}
+	
+	AWESOME_THROW(std::invalid_argument)
+		<< "unknown project type... type=" << config::Project::toStr(projectType);
 }
 
 void BuildEnviroment::checkDependenceProjects()const
@@ -629,10 +639,9 @@ void BuildEnviroment::checkDependenceProjects()const
 	for(auto&& dependence : buildSetting.dependences) {
 		auto keywards = split(dependence, '.');
 		if(2 != keywards.size()) {
-			std::stringstream msg;
-			msg << "\"" << dependence << "\" "
+			AWESOME_THROW(std::runtime_error)
+				<< "\"" << dependence << "\" "
 				<< "invalid keyward... please \"<project name>.<buildSetting name>\"";
-			throw std::runtime_error(msg.str());
 		}
 		
 		auto& dependenceProject = rootConfig.findProject(keywards[0]);
@@ -645,7 +654,7 @@ void BuildEnviroment::checkDependenceProjects()const
 			<< " -b " << keywards[1];
 		 auto ret = std::system(cmd.str().c_str());
 		 if(0 != ret) {
-		 	throw std::runtime_error("Failed to build dependence project...");
+		 	AWESOME_THROW(std::runtime_error) << "Failed to build dependence project...";
 		 }
 	}
 }
@@ -653,7 +662,7 @@ void BuildEnviroment::checkDependenceProjects()const
 const config::RootConfig& BuildEnviroment::rootConfig()const
 {
 	if(nullptr == this->mpRootConfig) {
-		throw std::runtime_error("BuildEnviroment::rootConfig(): rootConfig is nullptr");
+		AWESOME_THROW(std::runtime_error) << "rootConfig is nullptr";
 	}
 	return *this->mpRootConfig;
 }
@@ -661,7 +670,7 @@ const config::RootConfig& BuildEnviroment::rootConfig()const
 const config::Project& BuildEnviroment::project()const
 {
 	if(!this->isExistItem(HIERARCHY::eProject)) {
-		throw std::runtime_error("BuildEnviroment::project(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "invalid item hierarchy...";
 	}
 	return *this->mpProject;
 }
@@ -669,7 +678,7 @@ const config::Project& BuildEnviroment::project()const
 const config::BuildSetting& BuildEnviroment::buildSetting()const
 {
 	if(!this->isExistItem(HIERARCHY::eBuildSetting)) {
-		throw std::runtime_error("BuildEnviroment::buildSetting(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "invalid item hierarchy...";
 	}
 	return *this->mpBuildSetting;
 }
@@ -677,7 +686,7 @@ const config::BuildSetting& BuildEnviroment::buildSetting()const
 const config::TargetDirectory& BuildEnviroment::targetDirectory()const
 {
 	if(!this->isExistItem(HIERARCHY::eTargetDirectory)) {
-		throw std::runtime_error("BuildEnviroment::targetDirectory(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "invalid item hierarchy...";
 	}
 	return *this->mpTargetDir;
 }
@@ -685,7 +694,7 @@ const config::TargetDirectory& BuildEnviroment::targetDirectory()const
 const config::FileFilter& BuildEnviroment::fileFilter()const
 {
 	if(!this->isExistItem(HIERARCHY::eFileFilter)) {
-		throw std::runtime_error("BuildEnviroment::fileFilter(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "invalid item hierarchy...";
 	}
 	return *this->mpFileFilter;
 }
@@ -693,7 +702,7 @@ const config::FileFilter& BuildEnviroment::fileFilter()const
 const config::FileToProcess& BuildEnviroment::fileToProcess()const
 {
 	if(!this->isExistItem(HIERARCHY::eFileToProcess)) {
-		throw std::runtime_error("BuildEnviroment::fileToProcess(): invalid item hierarchy...");
+		AWESOME_THROW(std::runtime_error) << "invalid item hierarchy...";
 	}
 	return *this->mpFileToProcess;
 }

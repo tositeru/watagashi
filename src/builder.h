@@ -50,10 +50,6 @@ private:
 	void linkObjs(
 		BuildEnviroment& env,
 		const std::vector<std::string>& linkTargets);
-	
-	void checkOutputPath(
-		const std::shared_ptr<config::RootConfig>& pRootConfig,
-		const std::shared_ptr<ProgramOptions>& pOpt);
 };
 
 }

@@ -8,6 +8,7 @@
 #include "config.h"
 #include "programOptions.h"
 #include "utility.h"
+#include "exception.hpp"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -272,7 +273,7 @@ void SpecialVariables::initGlobal(
 {
 	if(nullptr == pRootConfig || nullptr == pProgramOptions)
 	{
-		throw std::invalid_argument("SpecialVariables::initGlobal(): pRootConfig or pProgramOptions is nullptr...");
+		AWESOME_THROW(std::invalid_argument) << "pRootConfig or pProgramOptions is nullptr...";
 	}
 	
 	this->mpGlobalScope = std::make_shared<decltype(this->mpGlobalScope)::element_type>();
@@ -378,43 +379,40 @@ std::string SpecialVariables::resolveReferenceVariable(
 	const config::RootConfig& rootConfig)const
 {
 	auto splitVariable = split(variable, '.');
-	try {
-		if(splitVariable.size() == 2) {
-			auto project = rootConfig.findProject(splitVariable[0]);
-			using referenceFunc = std::function<std::string(const config::Project&)>;
-			static const std::unordered_map<std::string, referenceFunc> sTable = {
-				{"name", [](const config::Project& project){ return project.name; } },
-				{"type", [](const config::Project& project){ return project.toStr(project.type); } },
-			};
-			auto it = sTable.find(splitVariable[1]);
-			if(sTable.end() == it) {
-				throw "\"" + splitVariable[1] + "\" is unknwon keyward..."s;
-			}
-			return it->second(project);
-		} else if(splitVariable.size() == 3) {
-			auto project = rootConfig.findProject(splitVariable[0]);
-			auto buildSetting = project.findBuildSetting(splitVariable[1]);
-			using referenceFunc = std::function<
-				std::string(
-					const ProgramOptions& options,
-					const config::Project&,
-					const config::BuildSetting&)>;
-			static const std::unordered_map<std::string, referenceFunc> sTable = {
-				{"name", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& setting){ return setting.name; } },
-				{"outputFilepath", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).string(); } },
-				{"outputFileDir", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).parent_path().string() + "/"; } },
-			};
-			auto it = sTable.find(splitVariable[2]);
-			if(sTable.end() == it) {
-				throw "\"" + splitVariable[2] + "\" is unknwon keyward..."s;
-			}
-			return it->second(*this->mpOptions, project, buildSetting);
-		} else {
-			throw "syntex error in reference variable. var={" + variable + "}";
+	if(splitVariable.size() == 2) {
+		auto project = rootConfig.findProject(splitVariable[0]);
+		using referenceFunc = std::function<std::string(const config::Project&)>;
+		static const std::unordered_map<std::string, referenceFunc> sTable = {
+			{"name", [](const config::Project& project){ return project.name; } },
+			{"type", [](const config::Project& project){ return project.toStr(project.type); } },
+		};
+		auto it = sTable.find(splitVariable[1]);
+		if(sTable.end() == it) {
+			AWESOME_THROW(std::runtime_error) << "\"" << splitVariable[1] << "\" is unknwon keyward..."s;
 		}
-	} catch(const std::string& message) {
-		throw std::runtime_error(message);
+		return it->second(project);
+	} else if(splitVariable.size() == 3) {
+		auto project = rootConfig.findProject(splitVariable[0]);
+		auto buildSetting = project.findBuildSetting(splitVariable[1]);
+		using referenceFunc = std::function<
+			std::string(
+				const ProgramOptions& options,
+				const config::Project&,
+				const config::BuildSetting&)>;
+		static const std::unordered_map<std::string, referenceFunc> sTable = {
+			{"name", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& setting){ return setting.name; } },
+			{"outputFilepath", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).string(); } },
+			{"outputFileDir", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).parent_path().string() + "/"; } },
+		};
+		auto it = sTable.find(splitVariable[2]);
+		if(sTable.end() == it) {
+			AWESOME_THROW(std::runtime_error) << "\"" << splitVariable[2] << "\" is unknwon keyward..."s;
+		}
+		return it->second(*this->mpOptions, project, buildSetting);
+	} else {
+		AWESOME_THROW(std::runtime_error) << "syntex error in reference variable. var={" << variable << "}";
 	}
+	return "";
 }
 
 std::string SpecialVariables::parseReferenceVariables(

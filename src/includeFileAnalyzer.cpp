@@ -16,6 +16,8 @@
 #include <clang/Tooling/Tooling.h>
 #endif
 
+#include "exception.hpp"
+
 using namespace std;
 namespace fs = boost::filesystem;
 
@@ -280,7 +282,7 @@ std::unordered_set<std::string> IncludeFileAnalyzer::analysis(
 	int result = tool.run(std::make_unique<SearchIncludeFilesAction::Factory>(pOutputData).get());
 	
 	if(0 != result) {
-		throw std::runtime_error("Failed analysis independent include file.");
+		AWESOME_THROW(std::runtime_error) << "Failed analysis independent include file.";
 	}
 	return pOutputData->includePaths;
 }
@@ -338,7 +340,7 @@ void IncludeFileAnalyzer::analysis(
 {
 	std::ifstream in(sourceFilePath.string());
 	if(in.bad()) {
-		throw std::invalid_argument("Failed to open " + sourceFilePath.string() + "...");
+		AWESOME_THROW(std::invalid_argument) << "Failed to open " << sourceFilePath.string() << "...";
 	}
 
 	std::unordered_set<std::string> foundIncludeFiles;

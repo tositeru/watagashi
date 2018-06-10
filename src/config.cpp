@@ -11,6 +11,7 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/range/adaptor/filtered.hpp>
 
+#include "exception.hpp"
 #include "errorReceiver.h"
 #include "utility.h"
 #include "specialVariables.h"
@@ -39,7 +40,7 @@ static void exeCommand(
 	if("" != command) {
 		auto ret = std::system(command.c_str());
 		if(0 != ret) {
-			throw std::runtime_error(exceptionMessage);
+			AWESOME_THROW(std::runtime_error) << exceptionMessage;
 		}
 	}
 }
@@ -899,7 +900,7 @@ boost::filesystem::path BuildSetting::makeIntermediatePath(
 	outputPath += ("_" +project.name + "_" + this->name);
 	if(!createDirectory(outputPath)) {
 		auto msg = "Failed to create output directory. path=" + outputPath.parent_path().string();
-		throw std::runtime_error(msg);
+		AWESOME_THROW(std::runtime_error) << msg;
 	}
 	return outputPath;
 }
@@ -916,7 +917,7 @@ boost::filesystem::path BuildSetting::makeOutputFilepath(
 	outputPath += ("_" + project.name+"_"+this->name);
 	if(!createDirectory(outputPath)) {
 		auto msg = "Failed to create output directory. path=" + outputPath.parent_path().string();
-		throw std::runtime_error(msg);
+		AWESOME_THROW(std::runtime_error) << msg;
 	}
 	
 	outputPath = fs::canonical(outputPath, "./") / this->outputConfig.name;
@@ -1106,7 +1107,7 @@ const BuildSetting& Project::findBuildSetting(const std::string& name)const
 {
 	auto buildSettingIt = this->buildSettings.find(name);
 	if(this->buildSettings.end() == buildSettingIt) {
-		throw std::runtime_error("\"" + name + "\" build settings don't found");
+		AWESOME_THROW(std::runtime_error) << "\"" + name + "\" build settings don't found";
 	}
 	return buildSettingIt->second;
 }
@@ -1552,7 +1553,7 @@ const Project& RootConfig::findProject(const std::string& name) const
 {
 	auto projectIt = this->projects.find(name);
 	if(this->projects.end() == projectIt) {
-		throw std::runtime_error("\"" + name + "\" project don't found");
+		AWESOME_THROW(std::runtime_error) << "\"" << name << "\" project don't found";
 	}
 	return projectIt->second;
 }
@@ -1685,7 +1686,7 @@ bool TemplateItem::parseItemType(const json11::Json& data, ErrorReceiver& errorR
 const Project& TemplateItem::project()const
 {
 	if(TemplateItemType::eProject != this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not Project.");
+		AWESOME_THROW(std::runtime_error) << "item is not Project.";
 	}
 	return boost::get<Project>(this->item);
 }
@@ -1693,7 +1694,7 @@ const Project& TemplateItem::project()const
 const BuildSetting& TemplateItem::buildSetting()const
 {
 	if(TemplateItemType::eBuildSetting != this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not BuildSetting.");
+		AWESOME_THROW(std::runtime_error) << "item is not BuildSetting.";
 	}
 	return boost::get<BuildSetting>(this->item);
 }
@@ -1701,7 +1702,7 @@ const BuildSetting& TemplateItem::buildSetting()const
 const TargetDirectory& TemplateItem::targetDirectory()const
 {
 	if(TemplateItemType::eTargetDirectory!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not TargetDirectory.");
+		AWESOME_THROW(std::runtime_error) << "item is not TargetDirectory.";
 	}
 	return boost::get<TargetDirectory>(this->item);
 }
@@ -1709,7 +1710,7 @@ const TargetDirectory& TemplateItem::targetDirectory()const
 const FileFilter& TemplateItem::fileFilter()const
 {
 	if(TemplateItemType::eFileFilter!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not FileFilter.");
+		AWESOME_THROW(std::runtime_error) << "item is not FileFilter.";
 	}
 	return boost::get<FileFilter>(this->item);
 }
@@ -1717,7 +1718,7 @@ const FileFilter& TemplateItem::fileFilter()const
 const FileToProcess& TemplateItem::fileToProcess()const
 {
 	if(TemplateItemType::eFileToProcess!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not FileToProcess.");
+		AWESOME_THROW(std::runtime_error) << "item is not FileToProcess.";
 	}
 	return boost::get<FileToProcess>(this->item);
 }
@@ -1725,7 +1726,7 @@ const FileToProcess& TemplateItem::fileToProcess()const
 const CustomCompiler& TemplateItem::customCompiler()const
 {
 	if(TemplateItemType::eCustomCompiler!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not CustomCompiler.");
+		AWESOME_THROW(std::runtime_error) << "item is not CustomCompiler.";
 	}
 	return boost::get<CustomCompiler>(this->item);
 }
@@ -1733,7 +1734,7 @@ const CustomCompiler& TemplateItem::customCompiler()const
 const CompileTask& TemplateItem::compileTask()const
 {
 	if(TemplateItemType::eCompileTask!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not CompileTask.");
+		AWESOME_THROW(std::runtime_error) << "item is not CompileTask.";
 	}
 	return boost::get<CompileTask>(this->item);
 }
@@ -1741,7 +1742,7 @@ const CompileTask& TemplateItem::compileTask()const
 const CompileTaskGroup& TemplateItem::compileTaskGroup()const
 {
 	if(TemplateItemType::eCompileTaskGroup!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not CompileTaskGroup.");
+		AWESOME_THROW(std::runtime_error) << "item is not CompileTaskGroup.";
 	}
 	return boost::get<CompileTaskGroup>(this->item);
 }
@@ -1749,7 +1750,7 @@ const CompileTaskGroup& TemplateItem::compileTaskGroup()const
 const CompileProcess& TemplateItem::compileProcess()const
 {
 	if(TemplateItemType::eCompileProcess!= this->itemType) {
-		throw std::runtime_error("config::TemplateItem: item is not CompileProcess.");
+		AWESOME_THROW(std::runtime_error) << "item is not CompileProcess.";
 	}
 	return boost::get<CompileProcess>(this->item);
 }
@@ -1804,7 +1805,7 @@ void parse(RootConfig& out, const json11::Json& configJson)
 	out.parse(configJson, errorReceiver);
 	if(errorReceiver.hasError()) {
 		errorReceiver.print();
-		throw std::runtime_error("Exsit error in config file!");
+		AWESOME_THROW(std::runtime_error) << "Exsit error in config file!";
 	}
 	errorReceiver.print(ErrorReceiver::eWarnning);
 }

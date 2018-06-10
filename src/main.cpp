@@ -6,6 +6,7 @@
 #include "config.h"
 #include "builder.h"
 #include "programOptions.h"
+#include "exception.hpp"
 
 #include "specialVariables.h"
 
@@ -15,6 +16,8 @@ using namespace std;
 void createConfigFile(const watagasi::ProgramOptions& opts);
 
 #include "includeFileAnalyzer.h"
+
+ExceptionHandlerSetter exceptionHandlerSetter;
 
 int main(int argn, char** args)
 {
