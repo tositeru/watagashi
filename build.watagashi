@@ -1,63 +1,8 @@
 {
-"defineVariables": {
-	"Global1": "gVar1",
-	"Global2": "gVar2"
-},
 "projects": [ {
 	"name": "watagashi",
 	"type": "exe",
-	"defineVariables": {
-		"var1": "apple",
-		"var2": "orange"
-	},
-	"defineTemplates": [{
-		"itemType": "buildSetting",
-		"name": "templateA",
-		"compiler": "clang++",
-		"compileOptions": ["-std=c++17"],
-		"linkLibraries": ["boost_system", "boost_filesystem", "boost_program_options"]
-	},
-	{
-		"itemType": "targetDirectory",
-		"name": "targetDirTemplate",
-		"path": "./src"
-	},
-	{
-		"itemType": "fileFilter",
-		"name": "filterTemplate",
-		"extensions": ["cpp", "c"]
-	},
-	{
-		"itemType": "fileToProcess",
-		"name": "processTemplate"
-	}],
-	"buildSettings": [ {
-		"name": "test",
-		"template": "templateA",
-		"preprocess": "echo preprocess template test.",
-		"linkLibraries": ["pthread"],
-		"targetDirectories": [{
-			"template": "targetDirTemplate",
-			"fileFilters": [{
-				"template": "filterTemplate",
-				"filesToProcess": [{
-					"template": "processTemplate",
-					"filepath": "@specialVariables.cpp|includeFileAnalyzer.cpp",
-					"preprocess": "echo file to process ${Global2} ${Global1}"
-				}]
-			}],
-			"ignores": [
-				"main.c",
-				"@json11/test"
-			]
-		}],
-		"outputConfig": {
-			"name": "templateTest",
-			"outputPath": "./output",
-			"intermediatePath": "./objs"
-		}		
-	},
-	{
+	"buildSettings": [	{
 		"name": "default",
 		"compiler": "clang++",
 		"preprocess": "echo preprocess to building. ${PROJECT_NAME}",
@@ -97,46 +42,5 @@
 			"intermediatePath": "./objs"
 		}
 	} ]
-},
-{
-	"name": "lib",
-	"type": "static",
-	"buildSettings": [ {
-		"name": "default",
-		"compiler": "clang++",
-		"targetDirectories": [ {
-			"path": "./libsrc",
-			"fileFilters": [{
-				"extensions": ["cpp", "c"]
-			}]
-		} ],
-		"compileOptions": ["--std=c++17"],
-		"outputConfig": {
-			"name": "libsrc",
-			"outputPath": "./output",
-			"intermediatePath": "./objs"
-		}
-	} ]
-},
-{
-	"name": "shared",
-	"type": "shared",
-	"version": 1, "minorNumber": 0, "releaseNumber": 1,
-	"buildSettings": [ {
-		"name": "default",
-		"compiler": "clang++",
-		"targetDirectories": [ {
-			"path": "./libsrc",
-			"fileFilters": [{
-				"extensions": ["cpp", "c"]
-			}]
-		} ],
-		"compileOptions": ["--std=c++17"],
-		"outputConfig": {
-			"name": "sharedsrc",
-			"outputPath": "./output",
-			"intermediatePath": "./objs"
-		}
-	} ]
-} ]
+}]
 }
