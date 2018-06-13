@@ -57,11 +57,6 @@ std::string SpecialVariables::Scope::parse(
 	return result;
 }
 
-void SpecialVariables::Scope::setUserDefinedVariables(const config::IItem* pItem)
-{
-	this->setUserDefinedVariables(pItem->defineVariables);
-}
-
 void SpecialVariables::Scope::setUserDefinedVariables(const std::unordered_map<std::string, std::string>& useDefinedVariables)
 {
 	boost::range::copy(
@@ -92,7 +87,7 @@ void SpecialVariables::GlobalScope::init(
 	const ProgramOptions& programOptions)
 {
 	this->variables.clear();
-	this->setUserDefinedVariables(&rootConfig);
+	this->setUserDefinedVariables(rootConfig.userValue.defineVariables);
 	
 	this->variables.insert({"ROOT_PATH", fs::absolute(fs::path(programOptions.configFilepath)).parent_path().string() + "/"});
 }
@@ -106,7 +101,8 @@ void SpecialVariables::GlobalScope::init(
 void SpecialVariables::ProjectScope::init(const config::Project& project)
 {
 	this->variables.clear();
-	this->setUserDefinedVariables(&project);
+	this->setUserDefinedVariables(project.userValue.defineVariables);
+
 	this->variables.insert({"PROJECT_NAME", project.name});
 	this->variables.insert({"PROJECT_TYPE", config::Project::toStr(project.type)});
  	
@@ -128,7 +124,7 @@ void SpecialVariables::ProjectScope::init(const config::Project& project)
 void SpecialVariables::BuildSettingScope::init(const config::BuildSetting& buildSetting)
 {
 	this->variables.clear();
-	this->setUserDefinedVariables(&buildSetting);
+	this->setUserDefinedVariables(buildSetting.userValue.defineVariables);
 
 	this->variables.insert({"BUILD_SETTING_NAME", buildSetting.name});
 	this->variables.insert({"COMPILER", buildSetting.compiler});
@@ -148,7 +144,7 @@ void SpecialVariables::BuildSettingScope::init(const config::BuildSetting& build
 void SpecialVariables::TargetDirectoryScope::init(const config::TargetDirectory& targetDir)
 {
 	this->variables.clear();
-	this->setUserDefinedVariables(&targetDir);
+	this->setUserDefinedVariables(targetDir.userValue.defineVariables);
 
 	this->variables.insert({"TARGET_DIRECTORY", targetDir.path});
 }
@@ -163,7 +159,7 @@ void SpecialVariables::FileFilterScope::init(
 	const config::FileFilter& filter)
 {
 	this->variables.clear();
-	this->setUserDefinedVariables(&filter);
+	this->setUserDefinedVariables(filter.userValue.defineVariables);
 }
 
 //========================================================================
@@ -176,7 +172,7 @@ void SpecialVariables::FileToProcessScope::init(
 	const config::FileToProcess& process)
 {
 	this->variables.clear();
-	this->setUserDefinedVariables(&process);
+	this->setUserDefinedVariables(process.userValue.defineVariables);
 }
 
 //========================================================================

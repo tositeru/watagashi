@@ -25,7 +25,6 @@ public:
 			const std::string& str,
 			const std::unordered_set<std::string>& foundVarialbes)const;
 	protected:
-		void setUserDefinedVariables(const config::IItem* pItem);
 		void setUserDefinedVariables(const std::unordered_map<std::string, std::string>& useDefinedVariables);
 	};
 

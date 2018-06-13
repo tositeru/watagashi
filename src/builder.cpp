@@ -186,7 +186,7 @@ void Builder::build(
 
 	auto outputPath = buildSetting.makeOutputFilepath(env.configFilepath(), project);	
 	bool isLink = (0 == processServer.failedCount() && 1 <= processServer.successCount());
-	isLink = !fs::exists(outputPath);
+	isLink |= !fs::exists(outputPath);
 	if(isLink) {
 		this->linkObjs(env, linkTargets);
 		buildSetting.exePostprocess();

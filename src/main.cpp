@@ -55,7 +55,9 @@ int main(int argn, char** args)
 	// parse
 	auto pRootConfig = std::make_shared<watagashi::config::RootConfig>();
 	//watagashi::config::parse(*pRootConfig, configJson);
-	watagashi::config::json::parse(*pRootConfig, configJson);
+	if(!watagashi::config::json::parse(*pRootConfig, configJson)){
+		return 1;
+	}
 	
 	watagashi::Builder builder;
 	switch(pOpts->taskType()) {
