@@ -1,15 +1,15 @@
 CXX=clang++
 CXX_FLAGS=-c -std=c++17 -O2 #-fno-rtti
 #DEFINE_CLANG_PATH=-DBUILD_IN_CLANG_PATH=\"/usr/local/lib/clang/7.0.0/\"
-LINK_LIBS=-lboost_system -lboost_filesystem -lboost_program_options -lpthread
+LINK_LIBS=-lboost_system -lboost_filesystem -lboost_program_options -lpthread -lboost_stacktrace_basic
 #LIBTOOLING_LIBS=-lclangTooling -lclangFrontendTool -lclangFrontend -lclangDriver -lclangSerialization -lclangCodeGen -lclangParse -lclangSema -lclangStaticAnalyzerFrontend -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangAnalysis -lclangARCMigrate -lclangRewrite -lclangRewriteFrontend -lclangEdit -lclangAST -lclangLex -lclangBasic -lclang
 #LINK_OPTS=$(LIBTOOLING_LIBS) `llvm-config --ldflags` `llvm-config --libs all` `llvm-config --system-libs all`
 
 OUTPUT_FILE=_watagashi
-OBJS=main.o builder.o utility.o json11.o config.o errorReceiver.o programOptions.o includeFileAnalyzer.o specialVariables.o buildEnviroment.o processServer.o
+OBJS=main.o builder.o utility.o json11.o config.o errorReceiver.o programOptions.o includeFileAnalyzer.o specialVariables.o buildEnviroment.o processServer.o configJsonParser.o
 
-watagsi: $(OBJS)
-	$(CXX) -o $(OUTPUT_FILE) main.o builder.o utility.o json11.o config.o errorReceiver.o programOptions.o includeFileAnalyzer.o specialVariables.o buildEnviroment.o processServer.o $(LINK_LIBS) #$(LINK_OPTS)
+_watagashi: $(OBJS)
+	$(CXX) -o $(OUTPUT_FILE) $(OBJS) $(LINK_LIBS) #$(LINK_OPTS)
 
 main.o: src/main.cpp
 	$(CXX) -o main.o src/main.cpp $(CXX_FLAGS)
@@ -33,6 +33,8 @@ buildEnviroment.o: src/buildEnviroment.cpp
 	$(CXX) -o buildEnviroment.o src/buildEnviroment.cpp $(CXX_FLAGS)
 processServer.o: src/processServer.cpp
 	$(CXX) -o processServer.o src/processServer.cpp $(CXX_FLAGS)
+configJsonParser.o: src/configJsonParser.cpp
+	$(CXX) -o configJsonParser.o src/configJsonParser.cpp $(CXX_FLAGS)
 
 .PHONY: clean
 
