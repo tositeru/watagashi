@@ -3,7 +3,8 @@
 #include <fstream>
 #include <boost/filesystem.hpp>
 
-namespace watagasi {
+namespace watagashi
+{
 
 std::string readFile(const boost::filesystem::path& filepath);
 bool createDirectory(const boost::filesystem::path& path);

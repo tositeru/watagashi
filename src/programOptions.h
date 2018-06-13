@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace watagasi
+namespace watagashi
 { 
 struct ProgramOptions
 {

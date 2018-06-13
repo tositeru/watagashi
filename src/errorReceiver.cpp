@@ -4,7 +4,7 @@
  
 using namespace std;
 
-namespace watagasi
+namespace watagashi
 {
 
 ErrorReceiver::ErrorReceiver(){}

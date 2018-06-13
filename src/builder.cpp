@@ -24,7 +24,7 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
-namespace watagasi
+namespace watagashi
 {
 
 struct MakeFileAndFilterPair

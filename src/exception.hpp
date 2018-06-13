@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+#include <ostream>
 #include <sstream>
 #include <boost/stacktrace/stacktrace.hpp>
 #include <boost/exception/diagnostic_information.hpp>

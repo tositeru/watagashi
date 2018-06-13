@@ -21,7 +21,7 @@ namespace fs = boost::filesystem;
 
 #endif
 
-namespace watagasi
+namespace watagashi
 {
 
 //========================================================================

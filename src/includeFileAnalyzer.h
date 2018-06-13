@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <boost/filesystem.hpp>
 
-namespace watagasi
+namespace watagashi
 {
 
 class IncludeFileAnalyzer

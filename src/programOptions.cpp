@@ -12,7 +12,7 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
-namespace watagasi
+namespace watagashi
 {
 
 bool ProgramOptions::parse(int argv, char** args)

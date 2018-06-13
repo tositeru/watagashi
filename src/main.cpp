@@ -4,6 +4,7 @@
 
 #include "utility.h"
 #include "config.h"
+#include "configJsonParser.h"
 #include "builder.h"
 #include "programOptions.h"
 #include "exception.hpp"
@@ -13,7 +14,7 @@
 using namespace json11;
 using namespace std;
 
-void createConfigFile(const watagasi::ProgramOptions& opts);
+void createConfigFile(const watagashi::ProgramOptions& opts);
 
 #include "includeFileAnalyzer.h"
 
@@ -21,13 +22,13 @@ ExceptionHandlerSetter exceptionHandlerSetter;
 
 int main(int argn, char** args)
 {
-	auto pOpts = std::make_shared<watagasi::ProgramOptions>();
+	auto pOpts = std::make_shared<watagashi::ProgramOptions>();
 	try {
 		if(!pOpts->parse(argn, args)) {
 			return 0;
 		}
 		
-		if(watagasi::ProgramOptions::eTASK_CREATE == pOpts->taskType()) {
+		if(watagashi::ProgramOptions::eTASK_CREATE == pOpts->taskType()) {
 			createConfigFile(*pOpts);
 			return 0;
 		}
@@ -37,7 +38,7 @@ int main(int argn, char** args)
 	}	
 	
 	const auto& configFilepath = pOpts->configFilepath;
-	std::string json_str = watagasi::readFile(configFilepath);
+	std::string json_str = watagashi::readFile(configFilepath);
 	if(json_str.empty()) {
 		cerr << "failed reading \"" << configFilepath << "\"" << endl;
 		return 1;
@@ -52,51 +53,41 @@ int main(int argn, char** args)
 	}
 
 	// parse
-	try {
-		auto pRootConfig = std::make_shared<watagasi::config::RootConfig>();
-		watagasi::config::parse(*pRootConfig, configJson); 
-		
-		watagasi::Builder builder;
-		switch(pOpts->taskType()) {
-		case watagasi::ProgramOptions::eTASK_BUILD:
-			builder.build(pRootConfig, pOpts);
-			break;
-		case watagasi::ProgramOptions::eTASK_CLEAN:
-			builder.clean(pRootConfig, pOpts);
-			break;
-		case watagasi::ProgramOptions::eTASK_REBUILD:
-			builder.clean(pRootConfig, pOpts);
-			builder.build(pRootConfig, pOpts);
-			break;
-		case watagasi::ProgramOptions::eTASK_LISTUP_FILES:
-			builder.listupFiles(pRootConfig, pOpts);
-			break;
-		case watagasi::ProgramOptions::eTASK_INSTALL:
-			builder.install(pRootConfig, pOpts);
-			break;
-		case watagasi::ProgramOptions::eTASK_SHOW_PROJECTS:
-			builder.showProjects(pRootConfig, pOpts);
-			break;
-		default:
-			throw std::runtime_error("unknown task type.");
-		}
-	} catch(std::runtime_error& e) {
-		cerr << e.what() << endl;
-		return 1;
-	} catch(std::invalid_argument& e) {
-		cerr << "Application error: " << e.what() << endl;
-		return 1;
-	} catch(std::exception& e) {
-		cerr << "Unknown exception: " << e.what() << endl;
-		return 1;
+	auto pRootConfig = std::make_shared<watagashi::config::RootConfig>();
+	//watagashi::config::parse(*pRootConfig, configJson);
+	watagashi::config::json::parse(*pRootConfig, configJson);
+	
+	watagashi::Builder builder;
+	switch(pOpts->taskType()) {
+	case watagashi::ProgramOptions::eTASK_BUILD:
+		builder.build(pRootConfig, pOpts);
+		break;
+	case watagashi::ProgramOptions::eTASK_CLEAN:
+		builder.clean(pRootConfig, pOpts);
+		break;
+	case watagashi::ProgramOptions::eTASK_REBUILD:
+		builder.clean(pRootConfig, pOpts);
+		builder.build(pRootConfig, pOpts);
+		break;
+	case watagashi::ProgramOptions::eTASK_LISTUP_FILES:
+		builder.listupFiles(pRootConfig, pOpts);
+		break;
+	case watagashi::ProgramOptions::eTASK_INSTALL:
+		builder.install(pRootConfig, pOpts);
+		break;
+	case watagashi::ProgramOptions::eTASK_SHOW_PROJECTS:
+		builder.showProjects(pRootConfig, pOpts);
+		break;
+	default:
+		AWESOME_THROW(std::runtime_error) << "unknown task type.";
 	}
 
 	return 0;
 }
 
-void createConfigFile(const watagasi::ProgramOptions& opts)
+void createConfigFile(const watagashi::ProgramOptions& opts)
 {
-	using namespace watagasi;
+	using namespace watagashi;
 	namespace fs = boost::filesystem;
 	
 	config::RootConfig rootConfig;
@@ -143,12 +134,14 @@ void createConfigFile(const watagasi::ProgramOptions& opts)
 	}
 	project.buildSettings.insert({buildSetting.name, buildSetting});
 	rootConfig.projects.insert({project.name, project});
-	
+
+/*	
 	json11::Json output;
 	if( !rootConfig.dump(output) ) {
 		std::runtime_error("failed to dump config file...");
 	}
-	
+*/
+	auto output = watagashi::config::json::dump(rootConfig);
 	cout << R"(config filepath (suffix ".watagashi") > )";
 	boost::filesystem::path configFilepath;
 	cin >> configFilepath;

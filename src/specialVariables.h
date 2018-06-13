@@ -7,7 +7,7 @@
 
 #include "config.h"
 
-namespace watagasi
+namespace watagashi
 {
 
 class ProgramOptions;

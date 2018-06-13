@@ -8,7 +8,7 @@
 
 #include "buildEnviroment.h"
 
-namespace watagasi
+namespace watagashi
 {
 
 struct Process

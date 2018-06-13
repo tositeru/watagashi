@@ -11,7 +11,7 @@
 #include "builder.h"
 #include "specialVariables.h"
 
-namespace watagasi
+namespace watagashi
 {
 
 class BuildEnviroment

@@ -12,7 +12,7 @@ namespace boost::filesystem {
 	class path;
 }
 
-namespace watagasi
+namespace watagashi
 {
 struct ProgramOptions;
 class SpecialVariables;

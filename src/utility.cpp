@@ -4,7 +4,7 @@
  
 namespace fs = boost::filesystem;
 
-namespace watagasi
+namespace watagashi
 {
 
 std::string readFile(const fs::path& filepath)

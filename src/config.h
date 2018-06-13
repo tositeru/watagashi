@@ -13,11 +13,11 @@
 #include "json11/json11.hpp"
 #include "errorReceiver.h"
 
-namespace watagasi {
+namespace watagashi {
 class SpecialVariables;
 }
 
-namespace watagasi::config
+namespace watagashi::config
 {
 
 struct TemplateItem;
@@ -97,6 +97,21 @@ protected:
 		return true;
 	}
 
+};
+
+struct CommonValue : public IItem
+{
+	std::vector<TemplateItem> defineTemplates;
+	std::unordered_map<std::string, std::string> defineVariables;
+
+	virtual void evalVariables(const SpecialVariables& variables)
+	{}
+	virtual void adaptTemplateItem(const TemplateItem& templateItem)
+	{}
+	
+protected:
+	virtual bool parseImpl(const json11::Json& data, ErrorReceiver& errorReceiver){}
+	virtual bool dumpImpl(json11::Json& out){}
 };
 
 struct FileToProcess : public IItem

@@ -19,7 +19,7 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
-namespace watagasi::config
+namespace watagashi::config
 {
 
 static void insertToJsonObj(
@@ -1624,14 +1624,6 @@ bool TemplateItem::parseImpl(const json11::Json& data, ErrorReceiver& errorRecei
 		bool operator()(boost::blank& blank)const { return false; }
 		
 		bool operator()(IItem& item)const { return item.parse(data, errorReceiver); }
-		
-		/*
-		bool operator()(Project& item)const { return item.parse(data, errorReceiver); }
-		bool operator()(BuildSetting& item)const { return item.parse(data, errorReceiver); }
-		bool operator()(TargetDirectory& item)const { return item.parse(data, errorReceiver); }
-		bool operator()(FileFilter& item)const { return item.parse(data, errorReceiver); }
-		bool operator()(FileToProcess& item)const { return item.parse(data, errorReceiver); }
-		*/
 	};
 	
 	if(!boost::apply_visitor(ParseItem(data, errorReceiver), this->item)) {

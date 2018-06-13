@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace watagasi {
+namespace watagashi {
 
 class ErrorReceiver
 {
