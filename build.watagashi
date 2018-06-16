@@ -42,5 +42,37 @@
 			"intermediatePath": "./objs"
 		}
 	} ]
-}]
+},{
+	"name": "newConfig",
+	"type": "exe",
+	"buildSettings": [	{
+		"name": "default",
+		"compiler": "clang++",
+		"targetDirectories": [ {
+				"path": "./src/json11",
+				"fileFilters": [{ "extensions": ["cpp"] }],
+				"ignores": ["@json11/test", "main.cpp"]
+			}, {
+				"path": "./newConfig",
+				"fileFilters": [{ "extensions": ["cpp"] }]
+		}],
+		"compileOptions": [
+			"-std=c++17"
+		],
+		"libraryDirectories": [],
+		"linkOptions": [ ],
+		"linkLibraries": [
+			"pthread",
+			"boost_system",
+			"boost_filesystem",
+			"boost_program_options",
+			"boost_stacktrace_basic"
+		],
+		"outputConfig": {
+			"name": "newConfig",
+			"outputPath": "./output",
+			"intermediatePath": "./objs"
+		}
+	} ]
+}]]
 }
