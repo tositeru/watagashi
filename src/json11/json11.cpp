@@ -60,11 +60,11 @@ static void outputDepth(string& out, int depth)
 	}
 }
 
-static void dump(NullStruct, string &out, int depth=0) {
+static void dump(NullStruct, string &out, int /*depth=0*/) {
     out += "null";
 }
 
-static void dump(double value, string &out, int depth=0) {
+static void dump(double value, string &out, int /*depth=0*/) {
     if (std::isfinite(value)) {
         char buf[32];
         snprintf(buf, sizeof buf, "%.17g", value);
@@ -74,17 +74,17 @@ static void dump(double value, string &out, int depth=0) {
     }
 }
 
-static void dump(int value, string &out, int depth=0) {
+static void dump(int value, string &out, int /*depth=0*/) {
     char buf[32];
     snprintf(buf, sizeof buf, "%d", value);
     out += buf;
 }
 
-static void dump(bool value, string &out, int depth=0) {
+static void dump(bool value, string &out, int /*depth=0*/) {
     out += value ? "true" : "false";
 }
 
-static void dump(const string &value, string &out, int depth=0) {
+static void dump(const string &value, string &out, int /*depth=0*/) {
     out += '"';
     for (size_t i = 0; i < value.length(); i++) {
         const char ch = value[i];
@@ -147,7 +147,7 @@ static void dump(const Json::object &values, string &out, int depth=0) {
         if (!first)
             out += ",\n";
         outputDepth(out, depth);
-        dump(kv.first, out);
+        dump(kv.first, out, depth);
         out += ": ";
         kv.second.dump(out, depth+1);
         first = false;

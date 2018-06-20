@@ -40,7 +40,7 @@ struct IItem
 	virtual void evalVariables(const SpecialVariables& variables) = 0;
 	virtual void adaptTemplateItem(const TemplateItem& templateItem) = 0;
 
-	virtual const TemplateItem* findTemplateItem(const std::string& name, TemplateItemType itemType)const{
+	virtual const TemplateItem* findTemplateItem(const std::string& /*name*/, TemplateItemType /*itemType*/)const{
 		return nullptr;
 	}
 
@@ -130,7 +130,7 @@ struct OutputConfig : public IItem
 	void adaptTemplateItem(const TemplateItem& templateItem)override;
 };
 
-class Project;
+struct Project;
 
 /// @brief Building settings
 struct BuildSetting : public IItem

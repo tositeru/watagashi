@@ -138,12 +138,12 @@ public:
     bool is_object() const { return type() == OBJECT; }
 
 	template<typename T> bool is_type(T dummy=T())const{ static_assert(sizeof(T) < 0); }
-	template<> bool is_type(int dummy)const{ return this->is_number(); }
-	template<> bool is_type(double dummy)const{ return this->is_number(); }
-	template<> bool is_type(bool dummy)const{ return this->is_bool(); }
-	template<> bool is_type(std::string dummy)const{ return this->is_string(); }
-	template<> bool is_type(array dummy)const{ return this->is_array(); }
-	template<> bool is_type(object dummy)const{ return this->is_object(); }
+	template<> bool is_type(int )const{ return this->is_number(); }
+	template<> bool is_type(double )const{ return this->is_number(); }
+	template<> bool is_type(bool )const{ return this->is_bool(); }
+	template<> bool is_type(std::string )const{ return this->is_string(); }
+	template<> bool is_type(array )const{ return this->is_array(); }
+	template<> bool is_type(object )const{ return this->is_object(); }
 	
     // Return the enclosed value if this is a number, 0 otherwise. Note that json11 does not
     // distinguish between integer and non-integer numbers - number_value() and int_value()
@@ -232,7 +232,7 @@ public:
     void setRowInFile(size_t row) { this->m_row = row; }
 private:
     std::shared_ptr<JsonValue> m_ptr;
-    size_t m_row = -1;
+    size_t m_row = static_cast<size_t>(-1);
 };
 
 // Internal class hierarchy - JsonValue objects are not exposed to users of this API.

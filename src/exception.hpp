@@ -76,39 +76,39 @@ public:
 private:
 	[[noreturn]] static void terminate() noexcept
 	{
-		const std::exception_ptr p = std::current_exception();
-		if(!p) {
+		std::exception_ptr const pException = std::current_exception();
+		if(!pException) {
 			std::abort();
 		}
 		try {
-			std::rethrow_exception(p);
-		} catch(const boost::exception& e) {
+			std::rethrow_exception(pException);
+		} catch(boost::exception const& e) {
 			{
 				int status;
-				const std::type_info& ti = typeid(e);
+				std::type_info const& ti = typeid(e);
 				std::unique_ptr<char, void(*)(void*)> p(abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status), std::free);
 				std::cerr << "terminate called after throwing an instance of '"
 					<< (status == 0 ? p.get() : ti.name()) << "'\n";
 			}
-			if(const char*const* p = boost::get_error_info<boost::throw_file>(e) ) {
+			if(char const *const* p = boost::get_error_info<boost::throw_file>(e) ) {
 				std::cerr << *p << ':';
 			}
-			if(const int* p = boost::get_error_info<boost::throw_line>(e)) {
+			if(int const * p = boost::get_error_info<boost::throw_line>(e)) {
 				std::cerr << *p << ":";
 			}
-			if(const char* const* p = boost::get_error_info<boost::throw_function>(e)) {
+			if(char const* const* p = boost::get_error_info<boost::throw_function>(e)) {
 				std::cerr << *p << ": ";
 			}
-			if(const std::exception* p = dynamic_cast<const std::exception*>(&e)) {
+			if(std::exception const* p = dynamic_cast<std::exception const *>(&e)) {
 				std::cerr << p->what();
 			}
 			std::cerr << "\n";
-			if(const boost::stacktrace::stacktrace* p = boost::get_error_info<StackTraceErrorInfo>(e)) {
+			if(boost::stacktrace::stacktrace const* p = boost::get_error_info<StackTraceErrorInfo>(e)) {
 				std::cerr << "Backtrace:\n";
 				std::cerr << *p << "\n";
 			}
 			std::cerr << std::flush;
-		}catch(const std::exception& e) {
+		}catch(std::exception const& e) {
 			std::cerr << "A unhandling exception occurred.\n";
 			std::cerr << e.what() << std::endl;
 		}catch(...) {

@@ -10,7 +10,7 @@
 namespace watagashi
 {
 
-class ProgramOptions;
+struct ProgramOptions;
 
 class SpecialVariables
 {

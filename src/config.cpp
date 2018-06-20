@@ -501,7 +501,7 @@ Project::Type Project::toType(const std::string& typeStr)
 		{"shared", eSharedLib},
 	};
 	auto s = typeStr;
-	std::transform(s.cbegin(), s.cend(), s.begin(), [](char c){ return std::tolower(c); });	
+	std::transform(s.cbegin(), s.cend(), s.begin(), [](char c){ return ::tolower(c); });	
 	auto it = sTable.find(s);
 	if(sTable.end() == it) {
 		return eUnknown;
@@ -558,7 +558,7 @@ CompileProcess::Type CompileProcess::toType(const std::string& typeStr)
 		{"buildin", eBuildIn},
 	};
 	auto s = typeStr;
-	std::transform(s.cbegin(), s.cend(), s.begin(), [](char c){ return std::tolower(c); });
+	std::transform(s.cbegin(), s.cend(), s.begin(), [](char c){ return ::tolower(c); });
 	auto it = sTable.find(s);
 	if(sTable.end() == it) {
 		return eUnknown;
@@ -812,7 +812,7 @@ TemplateItemType TemplateItem::toItemType(const std::string& typeStr)
 	};
 
 	auto s = typeStr;
-	std::transform(s.cbegin(), s.cend(), s.begin(), [](char c){ return std::tolower(c); });
+	std::transform(s.cbegin(), s.cend(), s.begin(), [](char c){ return ::tolower(c); });
 	auto it = sTable.find(s);
 	if(sTable.end() == it) {
 		return eUnknown;

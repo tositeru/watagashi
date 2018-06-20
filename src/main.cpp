@@ -152,7 +152,7 @@ void createConfigFile(const watagashi::ProgramOptions& opts)
 		cout << configFilepath << "is exsit. do override? (Y/N) >";
 		std::string c;
 		cin >> c;
-		if(std::tolower(c[0]) != 'y') {
+		if(::tolower(c[0]) != 'y') {
 			cout << "suspension create config file." << endl;
 			return ;
 		}
