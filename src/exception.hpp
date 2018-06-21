@@ -3,13 +3,22 @@
 #include <iostream>
 #include <ostream>
 #include <sstream>
-#include <boost/stacktrace/stacktrace.hpp>
+#include <string>
+#include <boost/stacktrace.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception/get_error_info.hpp>
 #include <boost/exception/enable_error_info.hpp>
 #include <boost/exception/exception.hpp>
 #include <boost/exception/info.hpp>
 #include <boost/current_function.hpp>
+
+
+#ifdef WIN32
+#include <Windows.h>
+#include <Dbghelp.h>
+#pragma comment(lib, "Dbghelp.lib")
+
+#endif
 
 typedef boost::error_info<struct StackTraceErrorInfoTag, boost::stacktrace::stacktrace> StackTraceErrorInfo;
 
@@ -84,11 +93,17 @@ private:
 			std::rethrow_exception(pException);
 		} catch(boost::exception const& e) {
 			{
-				int status;
+				std::cerr << "terminate called after throwing an instance of '";
 				std::type_info const& ti = typeid(e);
+#ifdef WIN32
+				char undecoratedName[1024];
+				auto ret = UnDecorateSymbolName(ti.name(), undecoratedName, sizeof(undecoratedName), UNDNAME_COMPLETE);
+				std::cerr << (ret != 0 ? undecoratedName : ti.name()) << "'\n";
+#else
+				int status;
 				std::unique_ptr<char, void(*)(void*)> p(abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status), std::free);
-				std::cerr << "terminate called after throwing an instance of '"
-					<< (status == 0 ? p.get() : ti.name()) << "'\n";
+				std::cerr << (status == 0 ? p.get() : ti.name()) << "'\n";
+#endif
 			}
 			if(char const *const* p = boost::get_error_info<boost::throw_file>(e) ) {
 				std::cerr << *p << ':';
