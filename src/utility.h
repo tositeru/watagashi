@@ -13,18 +13,18 @@ std::vector<std::string> split(const std::string& str, char delimiter);
 
 class Finally
 {
-	std::function<void()> mPred;
+    std::function<void()> mPred;
 public:
-	explicit Finally(std::function<void()> pred)
-		: mPred(pred)
-	{}
-	Finally(const Finally&)=delete;
-	void operator=(const Finally&)=delete;
-	
-	~Finally()
-	{
-		this->mPred();
-	}
+    explicit Finally(std::function<void()> pred)
+        : mPred(pred)
+    {}
+    Finally(const Finally&)=delete;
+    void operator=(const Finally&)=delete;
+    
+    ~Finally()
+    {
+        this->mPred();
+    }
 };
 
 

@@ -26,186 +26,186 @@ namespace watagashi
 
 //========================================================================
 //
-//	struct Scope
+//    struct Scope
 //
 //========================================================================
 
 void SpecialVariables::Scope::clear()
 {
-	this->variables.clear();
+    this->variables.clear();
 }
 
 std::string SpecialVariables::Scope::parse(
-	const std::string& str,
-	const std::unordered_set<std::string>& foundVarialbes)const
+    const std::string& str,
+    const std::unordered_set<std::string>& foundVarialbes)const
 {
-	auto result = str;
-	boost::range::for_each(
-		foundVarialbes
-		| boost::adaptors::filtered([&](const std::string& var){
-			return 1 <= this->variables.count(var);
-		}),
-		[&](const std::string& foundVariables){
-			auto& value = this->variables.find(foundVariables)->second;
-			auto keyward = "${" + foundVariables + "}";
-			std::string::size_type pos = 0;
-			while(std::string::npos != (pos = result.find(keyward, pos))) {
-				result.replace(pos, keyward.size(), value);
-				pos += keyward.size();
-			}
-		});
-	return result;
+    auto result = str;
+    boost::range::for_each(
+        foundVarialbes
+        | boost::adaptors::filtered([&](const std::string& var){
+            return 1 <= this->variables.count(var);
+        }),
+        [&](const std::string& foundVariables){
+            auto& value = this->variables.find(foundVariables)->second;
+            auto keyward = "${" + foundVariables + "}";
+            std::string::size_type pos = 0;
+            while(std::string::npos != (pos = result.find(keyward, pos))) {
+                result.replace(pos, keyward.size(), value);
+                pos += keyward.size();
+            }
+        });
+    return result;
 }
 
 void SpecialVariables::Scope::setUserDefinedVariables(const std::unordered_map<std::string, std::string>& useDefinedVariables)
 {
-	boost::range::copy(
-		useDefinedVariables
-		, std::inserter(this->variables, this->variables.end()));
+    boost::range::copy(
+        useDefinedVariables
+        , std::inserter(this->variables, this->variables.end()));
 }
 
 //========================================================================
 //
-//	struct CommandLineScope
+//    struct CommandLineScope
 //
 //========================================================================
 
 void SpecialVariables::CommandLineScope::init(const std::unordered_map<std::string, std::string>& userDefinedVariables)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(userDefinedVariables);
+    this->variables.clear();
+    this->setUserDefinedVariables(userDefinedVariables);
 }
 
 //========================================================================
 //
-//	struct GlobalScope
+//    struct GlobalScope
 //
 //========================================================================
 
 void SpecialVariables::GlobalScope::init(
-	const config::RootConfig& rootConfig,
-	const ProgramOptions& programOptions)
+    const config::RootConfig& rootConfig,
+    const ProgramOptions& programOptions)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(rootConfig.userValue.defineVariables);
-	
-	this->variables.insert({"ROOT_PATH", fs::absolute(fs::path(programOptions.configFilepath)).parent_path().string() + "/"});
+    this->variables.clear();
+    this->setUserDefinedVariables(rootConfig.userValue.defineVariables);
+    
+    this->variables.insert({"ROOT_PATH", fs::absolute(fs::path(programOptions.configFilepath)).parent_path().string() + "/"});
 }
 
 //========================================================================
 //
-//	struct ProjectScope
+//    struct ProjectScope
 //
 //========================================================================
 
 void SpecialVariables::ProjectScope::init(const config::Project& project)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(project.userValue.defineVariables);
+    this->variables.clear();
+    this->setUserDefinedVariables(project.userValue.defineVariables);
 
-	this->variables.insert({"PROJECT_NAME", project.name});
-	this->variables.insert({"PROJECT_TYPE", config::Project::toStr(project.type)});
- 	
+    this->variables.insert({"PROJECT_NAME", project.name});
+    this->variables.insert({"PROJECT_TYPE", config::Project::toStr(project.type)});
+     
 #ifdef USE_CLANG_LIBTOOLING
-	auto pClangPath = std::getenv("CLANG_PATH");
-	this->variables.insert({"CLANG_PATH", nullptr == pClangPath ? BUILD_IN_CLANG_PATH : pClangPath });
-	if(pClangPath == nullptr) {
-		cout << "use build in clang path=" << BUILD_IN_CLANG_PATH << endl;
-	}
+    auto pClangPath = std::getenv("CLANG_PATH");
+    this->variables.insert({"CLANG_PATH", nullptr == pClangPath ? BUILD_IN_CLANG_PATH : pClangPath });
+    if(pClangPath == nullptr) {
+        cout << "use build in clang path=" << BUILD_IN_CLANG_PATH << endl;
+    }
 #endif
 }
 
 //========================================================================
 //
-//	struct BuildSettingScope
+//    struct BuildSettingScope
 //
 //========================================================================
 
 void SpecialVariables::BuildSettingScope::init(const config::BuildSetting& buildSetting)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(buildSetting.userValue.defineVariables);
+    this->variables.clear();
+    this->setUserDefinedVariables(buildSetting.userValue.defineVariables);
 
-	this->variables.insert({"BUILD_SETTING_NAME", buildSetting.name});
-	this->variables.insert({"COMPILER", buildSetting.compiler});
+    this->variables.insert({"BUILD_SETTING_NAME", buildSetting.name});
+    this->variables.insert({"COMPILER", buildSetting.compiler});
 
-	auto& outputConfig = buildSetting.outputConfig;
-	this->variables.insert({"OUTPUT_NAME", outputConfig.name});
-	this->variables.insert({"OUTPUT_PATH", outputConfig.outputPath});
-	this->variables.insert({"INTERMEDIATE_PATH", outputConfig.intermediatePath});
+    auto& outputConfig = buildSetting.outputConfig;
+    this->variables.insert({"OUTPUT_NAME", outputConfig.name});
+    this->variables.insert({"OUTPUT_PATH", outputConfig.outputPath});
+    this->variables.insert({"INTERMEDIATE_PATH", outputConfig.intermediatePath});
 }
 
 //========================================================================
 //
-//	struct TargetDirectoryScope
+//    struct TargetDirectoryScope
 //
 //========================================================================
 
 void SpecialVariables::TargetDirectoryScope::init(const config::TargetDirectory& targetDir)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(targetDir.userValue.defineVariables);
+    this->variables.clear();
+    this->setUserDefinedVariables(targetDir.userValue.defineVariables);
 
-	this->variables.insert({"TARGET_DIRECTORY", targetDir.path});
+    this->variables.insert({"TARGET_DIRECTORY", targetDir.path});
 }
 
 //========================================================================
 //
-//	struct FileFilterScope
+//    struct FileFilterScope
 //
 //========================================================================
 
 void SpecialVariables::FileFilterScope::init(
-	const config::FileFilter& filter)
+    const config::FileFilter& filter)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(filter.userValue.defineVariables);
+    this->variables.clear();
+    this->setUserDefinedVariables(filter.userValue.defineVariables);
 }
 
 //========================================================================
 //
-//	struct FileToProcessScope
+//    struct FileToProcessScope
 //
 //========================================================================
 
 void SpecialVariables::FileToProcessScope::init(
-	const config::FileToProcess& process)
+    const config::FileToProcess& process)
 {
-	this->variables.clear();
-	this->setUserDefinedVariables(process.userValue.defineVariables);
+    this->variables.clear();
+    this->setUserDefinedVariables(process.userValue.defineVariables);
 }
 
 //========================================================================
 //
-//	struct TargetEnviromentScope
+//    struct TargetEnviromentScope
 //
 //========================================================================
 
 void SpecialVariables::TargetEnviromentScope::init(
-	const TargetEnviromentScope::InitDesc& desc)
+    const TargetEnviromentScope::InitDesc& desc)
 {
-	this->variables.clear();
+    this->variables.clear();
 
-	this->variables.insert({"INPUT_FILE_PATH", desc.inputFilepath.string()});
-	this->variables.insert({"INPUT_FILE_NAME", desc.inputFilepath.filename().string()});
-	this->variables.insert({"INPUT_FILE_STEM", desc.inputFilepath.stem().string()});
-	this->variables.insert({"INPUT_FILE_DIR",  desc.inputFilepath.parent_path().string()});
+    this->variables.insert({"INPUT_FILE_PATH", desc.inputFilepath.string()});
+    this->variables.insert({"INPUT_FILE_NAME", desc.inputFilepath.filename().string()});
+    this->variables.insert({"INPUT_FILE_STEM", desc.inputFilepath.stem().string()});
+    this->variables.insert({"INPUT_FILE_DIR",  desc.inputFilepath.parent_path().string()});
 
-	this->variables.insert({"OUTPUT_FILE_PATH", desc.outputFilepath.string()});
-	this->variables.insert({"OUTPUT_FILE_NAME", desc.outputFilepath.filename().string()});
-	this->variables.insert({"OUTPUT_FILE_STEM", desc.outputFilepath.stem().string()});
-	this->variables.insert({"OUTPUT_FILE_DIR",  desc.outputFilepath.parent_path().string()});
+    this->variables.insert({"OUTPUT_FILE_PATH", desc.outputFilepath.string()});
+    this->variables.insert({"OUTPUT_FILE_NAME", desc.outputFilepath.filename().string()});
+    this->variables.insert({"OUTPUT_FILE_STEM", desc.outputFilepath.stem().string()});
+    this->variables.insert({"OUTPUT_FILE_DIR",  desc.outputFilepath.parent_path().string()});
 }
 
 //========================================================================
 //
-//	class SpecialVariables
+//    class SpecialVariables
 //
 //========================================================================
 
 SpecialVariables::SpecialVariables()
-	: mpRootConfig(nullptr)
-	, mpOptions(nullptr)
+    : mpRootConfig(nullptr)
+    , mpOptions(nullptr)
 {}
 
 SpecialVariables::~SpecialVariables()
@@ -213,223 +213,223 @@ SpecialVariables::~SpecialVariables()
 
 void SpecialVariables::clear()
 {
-	this->mpGlobalScope.reset();
-	this->mpProjectScope.reset();
-	this->mpBuildSettingScope.reset();
-	this->mpTargetDirectoryScope.reset();
-	this->mpFileFilterScope.reset();
-	this->mpFileToProcessScope.reset();
-	this->mpCommandLineScope.reset();
+    this->mpGlobalScope.reset();
+    this->mpProjectScope.reset();
+    this->mpBuildSettingScope.reset();
+    this->mpTargetDirectoryScope.reset();
+    this->mpFileFilterScope.reset();
+    this->mpFileToProcessScope.reset();
+    this->mpCommandLineScope.reset();
 
-	this->mpRootConfig = nullptr;
-	this->mpOptions = nullptr;
+    this->mpRootConfig = nullptr;
+    this->mpOptions = nullptr;
 }
 
 void SpecialVariables::clearScope(ScopeType scopeType)
 {
-	switch(scopeType) {
-	case eGlobalScope:
-		this->mpGlobalScope.reset();
-		[[fallthrough]];
-	case eProjectScope:
-		this->mpProjectScope.reset();
-		[[fallthrough]];
-	case eBuildSettingScope:
-		this->mpBuildSettingScope.reset();
-		[[fallthrough]];
-	case eTargetDirectoryScope:
-		this->mpTargetDirectoryScope.reset();
-		[[fallthrough]];
-	case eFileFilterScope:
-		this->mpFileFilterScope.reset();
-		[[fallthrough]];
-	case eFileToProcessScope:
-		this->mpFileToProcessScope.reset();
-		[[fallthrough]];
-	case eTargetEnviromentScope:
-		this->mpTargetEnvScope.reset();
-		break;
-	case eCommandLineScope:
-		this->mpCommandLineScope.reset();
-		break;
-	default:
-		break;
-	}
+    switch(scopeType) {
+    case eGlobalScope:
+        this->mpGlobalScope.reset();
+        [[fallthrough]];
+    case eProjectScope:
+        this->mpProjectScope.reset();
+        [[fallthrough]];
+    case eBuildSettingScope:
+        this->mpBuildSettingScope.reset();
+        [[fallthrough]];
+    case eTargetDirectoryScope:
+        this->mpTargetDirectoryScope.reset();
+        [[fallthrough]];
+    case eFileFilterScope:
+        this->mpFileFilterScope.reset();
+        [[fallthrough]];
+    case eFileToProcessScope:
+        this->mpFileToProcessScope.reset();
+        [[fallthrough]];
+    case eTargetEnviromentScope:
+        this->mpTargetEnvScope.reset();
+        break;
+    case eCommandLineScope:
+        this->mpCommandLineScope.reset();
+        break;
+    default:
+        break;
+    }
 }
 
 void SpecialVariables::initCommandLine(const std::unordered_map<std::string, std::string>& userDefinedVariables)
 {
-	this->mpCommandLineScope = std::make_shared<decltype(this->mpCommandLineScope)::element_type>();
-	this->mpCommandLineScope->init(userDefinedVariables);
+    this->mpCommandLineScope = std::make_shared<decltype(this->mpCommandLineScope)::element_type>();
+    this->mpCommandLineScope->init(userDefinedVariables);
 }
 
 void SpecialVariables::initGlobal(
-	std::shared_ptr<config::RootConfig>& pRootConfig,
-	std::shared_ptr<ProgramOptions>& pProgramOptions)
+    std::shared_ptr<config::RootConfig>& pRootConfig,
+    std::shared_ptr<ProgramOptions>& pProgramOptions)
 {
-	if(nullptr == pRootConfig || nullptr == pProgramOptions)
-	{
-		AWESOME_THROW(std::invalid_argument) << "pRootConfig or pProgramOptions is nullptr...";
-	}
-	
-	this->mpGlobalScope = std::make_shared<decltype(this->mpGlobalScope)::element_type>();
-	this->mpGlobalScope->init(*pRootConfig, *pProgramOptions);
+    if(nullptr == pRootConfig || nullptr == pProgramOptions)
+    {
+        AWESOME_THROW(std::invalid_argument) << "pRootConfig or pProgramOptions is nullptr...";
+    }
+    
+    this->mpGlobalScope = std::make_shared<decltype(this->mpGlobalScope)::element_type>();
+    this->mpGlobalScope->init(*pRootConfig, *pProgramOptions);
 
-	this->mpRootConfig = pRootConfig;
-	this->mpOptions = pProgramOptions;
+    this->mpRootConfig = pRootConfig;
+    this->mpOptions = pProgramOptions;
 }
 
 void SpecialVariables::initProject(const config::Project& project)
 {
-	this->mpProjectScope = std::make_shared<decltype(this->mpProjectScope)::element_type>();
-	this->mpProjectScope->init(project);
+    this->mpProjectScope = std::make_shared<decltype(this->mpProjectScope)::element_type>();
+    this->mpProjectScope->init(project);
 }
 
 void SpecialVariables::initBuildSetting(const config::BuildSetting& buildSetting)
 {
-	this->mpBuildSettingScope = std::make_shared<decltype(this->mpBuildSettingScope)::element_type>();
-	this->mpBuildSettingScope->init(buildSetting);
+    this->mpBuildSettingScope = std::make_shared<decltype(this->mpBuildSettingScope)::element_type>();
+    this->mpBuildSettingScope->init(buildSetting);
 }
 
 void SpecialVariables::initTargetDirectory(const config::TargetDirectory& targetDir)
 {
-	this->mpTargetDirectoryScope = std::make_shared<decltype(this->mpTargetDirectoryScope)::element_type>();
-	this->mpTargetDirectoryScope->init(targetDir);
+    this->mpTargetDirectoryScope = std::make_shared<decltype(this->mpTargetDirectoryScope)::element_type>();
+    this->mpTargetDirectoryScope->init(targetDir);
 }
 
 void SpecialVariables::initFileFilter(const config::FileFilter& filter)
 {
-	this->mpFileFilterScope = std::make_shared<decltype(this->mpFileFilterScope)::element_type>();
-	this->mpFileFilterScope->init(filter);
+    this->mpFileFilterScope = std::make_shared<decltype(this->mpFileFilterScope)::element_type>();
+    this->mpFileFilterScope->init(filter);
 }
 
 void SpecialVariables::initFileToProcess(
-	const config::FileToProcess& process)
+    const config::FileToProcess& process)
 {
-	this->mpFileToProcessScope = std::make_shared<decltype(this->mpFileToProcessScope)::element_type>();
-	this->mpFileToProcessScope->init(process);
+    this->mpFileToProcessScope = std::make_shared<decltype(this->mpFileToProcessScope)::element_type>();
+    this->mpFileToProcessScope->init(process);
 }
 
 void SpecialVariables::initTargetEnviroment(
-	const TargetEnviromentScope::InitDesc& desc)
+    const TargetEnviromentScope::InitDesc& desc)
 {
-	this->mpTargetEnvScope = std::make_shared<decltype(this->mpTargetEnvScope)::element_type>();
-	this->mpTargetEnvScope->init(desc);
+    this->mpTargetEnvScope = std::make_shared<decltype(this->mpTargetEnvScope)::element_type>();
+    this->mpTargetEnvScope->init(desc);
 }
 
 std::string SpecialVariables::parse(
-	const std::string& str)const
+    const std::string& str)const
 {
-	auto findVariables = [](const std::string& str){
-		std::unordered_set<std::string> result;
-		if(std::string::npos == str.find('$')) {
-			return result;
-		}
-		std::regex pattern(R"(\$\{([a-zA-Z0-9_.]+)\})");
-		std::smatch match;
-		auto it = str.cbegin(), end = str.cend();
-		while(std::regex_search(it, end, match, pattern)) {
-			result.insert(match[1]);
-			it = match[0].second;
-		}
-		return result;
-	};
-	auto foundVariables = findVariables(str);
-	if(foundVariables.empty()) {
-		return str;
-	}
-	std::string result = str;
-	if(this->mpCommandLineScope) {
-		result = this->mpCommandLineScope->parse(result, foundVariables);
-	}
-	if(this->mpTargetEnvScope) {
-		result = this->mpTargetEnvScope->parse(result, foundVariables);
-	}
-	if(this->mpFileToProcessScope) {
-		result = this->mpFileToProcessScope->parse(result, foundVariables);
-	}
-	if(this->mpTargetDirectoryScope) {
-		result = this->mpTargetDirectoryScope->parse(result, foundVariables);
-	}
-	if(this->mpBuildSettingScope) {
-		result = this->mpBuildSettingScope->parse(result, foundVariables);
-	}
-	if(this->mpProjectScope) {
-		result = this->mpProjectScope->parse(result, foundVariables);
-	}
-	if(this->mpGlobalScope) {
-		result = this->mpGlobalScope->parse(result, foundVariables);
-	}
-	
-	if(this->mpOptions && this->mpRootConfig) {
-		foundVariables = findVariables(result);
-		if(!foundVariables.empty()) {
-			result = this->parseReferenceVariables(result, foundVariables, *this->mpRootConfig);
-		}
-	}
-	return result;
+    auto findVariables = [](const std::string& str){
+        std::unordered_set<std::string> result;
+        if(std::string::npos == str.find('$')) {
+            return result;
+        }
+        std::regex pattern(R"(\$\{([a-zA-Z0-9_.]+)\})");
+        std::smatch match;
+        auto it = str.cbegin(), end = str.cend();
+        while(std::regex_search(it, end, match, pattern)) {
+            result.insert(match[1]);
+            it = match[0].second;
+        }
+        return result;
+    };
+    auto foundVariables = findVariables(str);
+    if(foundVariables.empty()) {
+        return str;
+    }
+    std::string result = str;
+    if(this->mpCommandLineScope) {
+        result = this->mpCommandLineScope->parse(result, foundVariables);
+    }
+    if(this->mpTargetEnvScope) {
+        result = this->mpTargetEnvScope->parse(result, foundVariables);
+    }
+    if(this->mpFileToProcessScope) {
+        result = this->mpFileToProcessScope->parse(result, foundVariables);
+    }
+    if(this->mpTargetDirectoryScope) {
+        result = this->mpTargetDirectoryScope->parse(result, foundVariables);
+    }
+    if(this->mpBuildSettingScope) {
+        result = this->mpBuildSettingScope->parse(result, foundVariables);
+    }
+    if(this->mpProjectScope) {
+        result = this->mpProjectScope->parse(result, foundVariables);
+    }
+    if(this->mpGlobalScope) {
+        result = this->mpGlobalScope->parse(result, foundVariables);
+    }
+    
+    if(this->mpOptions && this->mpRootConfig) {
+        foundVariables = findVariables(result);
+        if(!foundVariables.empty()) {
+            result = this->parseReferenceVariables(result, foundVariables, *this->mpRootConfig);
+        }
+    }
+    return result;
 }
 
 std::string SpecialVariables::resolveReferenceVariable(
-	const std::string& variable,
-	const config::RootConfig& rootConfig)const
+    const std::string& variable,
+    const config::RootConfig& rootConfig)const
 {
-	auto splitVariable = split(variable, '.');
-	if(splitVariable.size() == 2) {
-		auto project = rootConfig.findProject(splitVariable[0]);
-		using referenceFunc = std::function<std::string(const config::Project&)>;
-		static const std::unordered_map<std::string, referenceFunc> sTable = {
-			{"name", [](const config::Project& project){ return project.name; } },
-			{"type", [](const config::Project& project){ return project.toStr(project.type); } },
-		};
-		auto it = sTable.find(splitVariable[1]);
-		if(sTable.end() == it) {
-			AWESOME_THROW(std::runtime_error) << "\"" << splitVariable[1] << "\" is unknwon keyward..."s;
-		}
-		return it->second(project);
-	} else if(splitVariable.size() == 3) {
-		auto project = rootConfig.findProject(splitVariable[0]);
-		auto buildSetting = project.findBuildSetting(splitVariable[1]);
-		using referenceFunc = std::function<
-			std::string(
-				const ProgramOptions& options,
-				const config::Project&,
-				const config::BuildSetting&)>;
-		static const std::unordered_map<std::string, referenceFunc> sTable = {
-			{"name", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& setting){ return setting.name; } },
-			{"outputFilepath", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).string(); } },
-			{"outputFileDir", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).parent_path().string() + "/"; } },
-		};
-		auto it = sTable.find(splitVariable[2]);
-		if(sTable.end() == it) {
-			AWESOME_THROW(std::runtime_error) << "\"" << splitVariable[2] << "\" is unknwon keyward..."s;
-		}
-		return it->second(*this->mpOptions, project, buildSetting);
-	} else {
-		AWESOME_THROW(std::runtime_error) << "syntex error in reference variable. var={" << variable << "}";
-	}
-	return "";
+    auto splitVariable = split(variable, '.');
+    if(splitVariable.size() == 2) {
+        auto project = rootConfig.findProject(splitVariable[0]);
+        using referenceFunc = std::function<std::string(const config::Project&)>;
+        static const std::unordered_map<std::string, referenceFunc> sTable = {
+            {"name", [](const config::Project& project){ return project.name; } },
+            {"type", [](const config::Project& project){ return project.toStr(project.type); } },
+        };
+        auto it = sTable.find(splitVariable[1]);
+        if(sTable.end() == it) {
+            AWESOME_THROW(std::runtime_error) << "\"" << splitVariable[1] << "\" is unknwon keyward..."s;
+        }
+        return it->second(project);
+    } else if(splitVariable.size() == 3) {
+        auto project = rootConfig.findProject(splitVariable[0]);
+        auto buildSetting = project.findBuildSetting(splitVariable[1]);
+        using referenceFunc = std::function<
+            std::string(
+                const ProgramOptions& options,
+                const config::Project&,
+                const config::BuildSetting&)>;
+        static const std::unordered_map<std::string, referenceFunc> sTable = {
+            {"name", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& setting){ return setting.name; } },
+            {"outputFilepath", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).string(); } },
+            {"outputFileDir", [](const ProgramOptions& options, const config::Project& project, const config::BuildSetting& buildSetting){ return buildSetting.makeOutputFilepath(fs::path(options.configFilepath).parent_path().string(), project).parent_path().string() + "/"; } },
+        };
+        auto it = sTable.find(splitVariable[2]);
+        if(sTable.end() == it) {
+            AWESOME_THROW(std::runtime_error) << "\"" << splitVariable[2] << "\" is unknwon keyward..."s;
+        }
+        return it->second(*this->mpOptions, project, buildSetting);
+    } else {
+        AWESOME_THROW(std::runtime_error) << "syntex error in reference variable. var={" << variable << "}";
+    }
+    return "";
 }
 
 std::string SpecialVariables::parseReferenceVariables(
-	const std::string& str,
-	const std::unordered_set<std::string>& foundVariables,
-	const config::RootConfig& rootConfig)const
+    const std::string& str,
+    const std::unordered_set<std::string>& foundVariables,
+    const config::RootConfig& rootConfig)const
 {
-	auto result = str;
-	boost::range::for_each(
-		foundVariables,
-		[&](const std::string& foundVariable){
-			auto value = this->resolveReferenceVariable(foundVariable, rootConfig);
-			
-			auto keyward = "${" + foundVariable + "}";
-			std::string::size_type pos = 0;
-			while(std::string::npos != (pos = result.find(keyward, pos))) {
-				result.replace(pos, keyward.size(), value);
-				pos += keyward.size();
-			}
-		});
-	return result;
+    auto result = str;
+    boost::range::for_each(
+        foundVariables,
+        [&](const std::string& foundVariable){
+            auto value = this->resolveReferenceVariable(foundVariable, rootConfig);
+            
+            auto keyward = "${" + foundVariable + "}";
+            std::string::size_type pos = 0;
+            while(std::string::npos != (pos = result.find(keyward, pos))) {
+                result.replace(pos, keyward.size(), value);
+                pos += keyward.size();
+            }
+        });
+    return result;
 }
 
 }

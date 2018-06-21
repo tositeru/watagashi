@@ -43,6 +43,7 @@ target_sources(watagashi
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/specialVariables.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/utility.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/utility.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/data.h"
 )
 
 include_directories(
