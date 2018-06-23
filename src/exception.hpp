@@ -12,13 +12,7 @@
 #include <boost/exception/info.hpp>
 #include <boost/current_function.hpp>
 
-
-#ifdef WIN32
-#include <Windows.h>
-#include <Dbghelp.h>
-#pragma comment(lib, "Dbghelp.lib")
-
-#endif
+#include "utility.h"
 
 typedef boost::error_info<struct StackTraceErrorInfoTag, boost::stacktrace::stacktrace> StackTraceErrorInfo;
 
@@ -95,16 +89,9 @@ public:
         } catch(boost::exception const& e) {
             {
                 std::cerr << "terminate called after throwing an instance of '";
-                std::type_info const& ti = typeid(e);
-#ifdef WIN32
-                char undecoratedName[1024];
-                auto ret = UnDecorateSymbolName(ti.name(), undecoratedName, sizeof(undecoratedName), UNDNAME_COMPLETE);
-                std::cerr << (ret != 0 ? undecoratedName : ti.name()) << "'\n";
-#else
-                int status;
-                std::unique_ptr<char, void(*)(void*)> p(abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status), std::free);
-                std::cerr << (status == 0 ? p.get() : ti.name()) << "'\n";
-#endif
+                auto const& ti = typeid(e);
+                auto demangleName = demangle(ti);
+                std::cerr << (demangleName.empty() ? ti.name() : demangleName) << "\n";
             }
             if(char const *const* p = boost::get_error_info<boost::throw_file>(e) ) {
                 std::cerr << *p << ':';

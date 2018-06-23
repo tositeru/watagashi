@@ -45,3 +45,9 @@ template<> struct hash<boost::filesystem::path>
 };
 
 }
+
+std::string demangle(char const* name);
+inline std::string demangle(std::type_info const& type_info)
+{
+    return demangle(type_info.name());
+}
