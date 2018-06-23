@@ -64,9 +64,18 @@ class Builder_ final
     Builder_& operator=(Builder_ const&) = delete;
 
 public:
+    struct Scope
+    {
+        boost::filesystem::path inputFilepath;
+        boost::filesystem::path outputFilepath;
+
+    };
+
+public:
     Builder_(data::Project const& project, ProgramOptions const& options);
 
     void addCompiler(data::Compiler const& compiler);
+    void addCompiler(data::Compiler && compiler);
 
     void build()const;
     void clean()const;
@@ -78,6 +87,8 @@ public:
     data::Project const& project()const;
     ProgramOptions const& options()const;
     data::Compiler const& getCompiler(std::string const& name)const;
+
+    std::string parseVariables(std::string const& str, Scope const& scope)const;
 
 private:
     data::Project const& mProject;

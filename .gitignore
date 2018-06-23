@@ -54,3 +54,6 @@
 /src/INSTALL.vcxproj
 /src/INSTALL.vcxproj.filters
 /ALL_BUILD.vcxproj.user
+/ZERO_CHECK.vcxproj.user
+/intermediate
+/output

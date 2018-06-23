@@ -45,7 +45,7 @@ public:
             << boost::throw_function(this->functionName)
             << boost::throw_file(this->fileName)
             << boost::throw_line(this->lineNumber)
-            << StackTraceErrorInfo(std::move(this->stacktrace))    ;
+            << StackTraceErrorInfo(std::move(this->stacktrace));
     }
     
     template<typename U>
@@ -82,11 +82,12 @@ public:
     {
         std::set_terminate(&terminate);
     }
-private:
+public:
     [[noreturn]] static void terminate() noexcept
     {
         std::exception_ptr const pException = std::current_exception();
         if(!pException) {
+            std::cerr << "hoge" << std::endl;
             std::abort();
         }
         try {

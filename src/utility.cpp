@@ -1,8 +1,10 @@
 #include "utility.h"
 
 #include <sstream>
- 
+#include <iostream>
+
 namespace fs = boost::filesystem;
+using namespace std;
 
 namespace watagashi
 {
@@ -43,6 +45,11 @@ std::vector<std::string> split(const std::string& str, char delimiter)
         result.push_back(field);
     }
     return result;
+}
+
+bool runCommand(char const* command)
+{
+    return 0 == std::system(command);
 }
 
 }
