@@ -1,0 +1,108 @@
+# single line comment
+##
+  enable multiple line comment!!
+  !
+  !
+  !
+  !
+##
+#####
+  number of '#' must match!
+#####
+a is ABCDE ## comment at the end of the line in value ##
+a is ## # ### # a = "## # ###" #
+
+# string value
+str1 is Apple is fruits.
+str2 is Multiple line string
+  judge indent.
+# When start '\' prefix, it is string!
+str3 is \19203
+
+# number value
+num is 100
+num2 is 1.294
+num3 is 1.34e2
+
+# object value
+obj1 is [Object]
+# obj1.member1 = "obj1 is Orange"
+member1 in obj1 is Orange # Is "obj1.member1 is Orange" better than? #
+
+obj2 is [Object]
+  member1 is Jungo
+  member2 is Sabata
+  member3 is Lita
+# copy obj2
+obj3 copy obj2
+
+##
+  array value
+##
+array1 are Circle, Rectangle, # ["Circle", "Rectangle", 222, "321"] #
+  222, \321
+array1 push_back Tail ## only push back ##
+array1 remove 0
+0 in array1 is Cone # Is "array1[0] is Cone" better than? #
+
+array2 are A, B, and C is D.\, \    , # ["A, B, and C is D.", "    "] #
+array3 are Sun, # define array by multiple line. array3 => ["Sun", "Moon", "Earth", Array, Object] #
+  Moon,
+  Earth,
+  [Array] Hoge,
+    Foo, Fuga,
+    Bar
+  [Object]
+    member1 is Hello
+    member2 is Watagashi!
+# expand elements of array2 into array4
+array4 are Apple, ${array2}, ${} # array4 is ["Apple", "A, B, and C is D.", "    "] #
+array5 is [Array]
+  A,
+  B,
+  C,
+
+##
+  reference value
+##
+ref1 is ${str1}
+ref2 is ${num1}
+ref3 is ${obj1}
+ref3_1 is ${member1 in obj1}
+ref4 is ${array1}
+ref4_1 is ${0 in array1}
+ref5 is This "${ref1}" is string # ref5 = 'This "Apple is fruits" is string' #
+
+copy1 copy ${str1}
+copy2 copy ${num1}
+copy3 copy ${obj1}
+copy3 copy ${member1 in obj1}
+copy4 copy ${array1}
+copy5 copy ${0 in array1}
+
+##
+  Project setting example
+##
+
+watagashi is [Project]
+  type is exe
+  releaseNumber is 0
+  targets are [Directory]
+      path is src
+      extensions are cpp, c
+      ignores are main.c
+  compiler is clang++
+  compileOptions are -O2
+  linkLibraries are boost_system, boost_filesystem,
+    boost_program_options, boost_stacktrace
+  outputName is watagashi
+  outputPath is output
+  intermediatePath is intermediate
+  preprocess is echo Hello Watagashi
+    echo Var1 variable is ${Var1}
+
+# debug version
+watagashi_debug copy watagashi
+  compileOptions are -Od, -std=c++17 ## override ##
+  outputName is watagashi_d
+

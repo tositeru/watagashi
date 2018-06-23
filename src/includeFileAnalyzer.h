@@ -11,19 +11,20 @@ namespace watagashi
 class IncludeFileAnalyzer
 {
 public:
-	static bool sCheckUpdateTime(
-		const boost::filesystem::path& inputPath,
-		const boost::filesystem::path& outputPath,
-		const std::vector<std::string>& includePaths);
+    static bool sCheckUpdateTime(
+        boost::filesystem::path const& inputFilepath,
+        boost::filesystem::path const& outputFilepath,
+        std::vector<std::string> const& includeDirectories);
+
+    static bool sCheckUpdateTime(
+        boost::filesystem::path const& inputFilepath,
+        boost::filesystem::path const& outputFilepath,
+        std::unordered_set<boost::filesystem::path> const& includeDirectories);
 
 public:
-	IncludeFileAnalyzer() = default;
-	~IncludeFileAnalyzer() = default;
+    IncludeFileAnalyzer() = delete;
+    ~IncludeFileAnalyzer() = delete;
 
-	void analysis(
-		std::unordered_set<std::string>* pInOut,
-		const boost::filesystem::path& sourceFilePath,
-		const std::vector<std::string>& includePaths)const;
 };
 
 }

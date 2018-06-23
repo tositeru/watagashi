@@ -54,17 +54,17 @@ struct NullStruct {
 
 static void outputDepth(string& out, int depth)
 {
-	depth = depth < 0 ? 0 : depth;
-	for(auto i=0; i<depth; ++i) {
-		out += "  ";
-	}
+    depth = depth < 0 ? 0 : depth;
+    for(auto i=0; i<depth; ++i) {
+        out += "  ";
+    }
 }
 
-static void dump(NullStruct, string &out, int depth=0) {
+static void dump(NullStruct, string &out, int /*depth=0*/) {
     out += "null";
 }
 
-static void dump(double value, string &out, int depth=0) {
+static void dump(double value, string &out, int /*depth=0*/) {
     if (std::isfinite(value)) {
         char buf[32];
         snprintf(buf, sizeof buf, "%.17g", value);
@@ -74,17 +74,17 @@ static void dump(double value, string &out, int depth=0) {
     }
 }
 
-static void dump(int value, string &out, int depth=0) {
+static void dump(int value, string &out, int /*depth=0*/) {
     char buf[32];
     snprintf(buf, sizeof buf, "%d", value);
     out += buf;
 }
 
-static void dump(bool value, string &out, int depth=0) {
+static void dump(bool value, string &out, int /*depth=0*/) {
     out += value ? "true" : "false";
 }
 
-static void dump(const string &value, string &out, int depth=0) {
+static void dump(const string &value, string &out, int /*depth=0*/) {
     out += '"';
     for (size_t i = 0; i < value.length(); i++) {
         const char ch = value[i];
@@ -147,7 +147,7 @@ static void dump(const Json::object &values, string &out, int depth=0) {
         if (!first)
             out += ",\n";
         outputDepth(out, depth);
-        dump(kv.first, out);
+        dump(kv.first, out, depth);
         out += ": ";
         kv.second.dump(out, depth+1);
         first = false;
@@ -235,7 +235,7 @@ class JsonObject final : public Value<Json::OBJECT, Json::object> {
     const Json::object &object_items() const override { return m_value; }
     const Json & operator[](const string &key) const override;
 
-	Json::object &object_items() { return m_value; }
+    Json::object &object_items() { return m_value; }
 
 public:
     explicit JsonObject(const Json::object &value) : Value(value) {}
@@ -401,14 +401,14 @@ struct JsonParser final {
      *
      * Advance until the current character is non-whitespace.
      */
-	void consume_whitespace() {
-		while (str[i] == ' ' || str[i] == '\r' || str[i] == '\n' || str[i] == '\t') {
-			if('\n' == str[i]) {
-				++this->currentRow;
-			}
-			i++;
-		}
-	}
+    void consume_whitespace() {
+        while (str[i] == ' ' || str[i] == '\r' || str[i] == '\n' || str[i] == '\t') {
+            if('\n' == str[i]) {
+                ++this->currentRow;
+            }
+            i++;
+        }
+    }
 
     /* consume_comment()
      *
@@ -425,7 +425,7 @@ struct JsonParser final {
           // advance until next line, or end of input
           while (i < str.size() && str[i] != '\n') {
             i++;
-          	}
+              }
           if('\n' == str[i]) { ++this->currentRow; }
           comment_found = true;
         }
@@ -622,36 +622,36 @@ struct JsonParser final {
             return fail("invalid " + esc(str[i]) + " in number");
         }
 
-		if (str[i] != '.' && str[i] != 'e' && str[i] != 'E'
-		        && (i - start_pos) <= static_cast<size_t>(std::numeric_limits<int>::digits10)) {
-		    return Json(std::atoi(str.c_str() + start_pos), this->currentRow);
-		}
+        if (str[i] != '.' && str[i] != 'e' && str[i] != 'E'
+                && (i - start_pos) <= static_cast<size_t>(std::numeric_limits<int>::digits10)) {
+            return Json(std::atoi(str.c_str() + start_pos), this->currentRow);
+        }
 
-		// Decimal part
-		if (str[i] == '.') {
-		    i++;
-		    if (!in_range(str[i], '0', '9'))
-		        return fail("at least one digit required in fractional part");
-		
-		    while (in_range(str[i], '0', '9'))
-		        i++;
-		}
+        // Decimal part
+        if (str[i] == '.') {
+            i++;
+            if (!in_range(str[i], '0', '9'))
+                return fail("at least one digit required in fractional part");
+        
+            while (in_range(str[i], '0', '9'))
+                i++;
+        }
 
-		// Exponent part
-		if (str[i] == 'e' || str[i] == 'E') {
-		    i++;
-		
-		    if (str[i] == '+' || str[i] == '-')
-		        i++;
-		
-		    if (!in_range(str[i], '0', '9'))
-		        return fail("at least one digit required in exponent");
-		
-		    while (in_range(str[i], '0', '9'))
-		        i++;
-		}
+        // Exponent part
+        if (str[i] == 'e' || str[i] == 'E') {
+            i++;
+        
+            if (str[i] == '+' || str[i] == '-')
+                i++;
+        
+            if (!in_range(str[i], '0', '9'))
+                return fail("at least one digit required in exponent");
+        
+            while (in_range(str[i], '0', '9'))
+                i++;
+        }
 
-		return Json(std::strtod(str.c_str() + start_pos, nullptr), this->currentRow);
+        return Json(std::strtod(str.c_str() + start_pos, nullptr), this->currentRow);
     }
 
     /* expect(str, res)
@@ -659,111 +659,111 @@ struct JsonParser final {
      * Expect that 'str' starts at the character that was just read. If it does, advance
      * the input and return res. If not, flag an error.
      */
-	Json expect(const string &expected, Json res) {
-		assert(i != 0);
-		i--;
-		if (str.compare(i, expected.length(), expected) == 0) {
-			i += expected.length();
-			res.setRowInFile(this->currentRow);
-			return res;
-		} else {
-			return fail("parse error: expected " + expected + ", got " + str.substr(i, expected.length()));
-		}
-	}
+    Json expect(const string &expected, Json res) {
+        assert(i != 0);
+        i--;
+        if (str.compare(i, expected.length(), expected) == 0) {
+            i += expected.length();
+            res.setRowInFile(this->currentRow);
+            return res;
+        } else {
+            return fail("parse error: expected " + expected + ", got " + str.substr(i, expected.length()));
+        }
+    }
 
     /* parse_json()
      *
      * Parse a JSON object.
      */
     Json parse_json(int depth) {
-		if (depth > max_depth) {
-		    return fail("exceeded maximum nesting depth");
-		}
+        if (depth > max_depth) {
+            return fail("exceeded maximum nesting depth");
+        }
 
-		char ch = get_next_token();
-		if (failed)
-		    return Json();
-		
-		if (ch == '-' || (ch >= '0' && ch <= '9')) {
-		    i--;
-		    return parse_number();
-		}
+        char ch = get_next_token();
+        if (failed)
+            return Json();
+        
+        if (ch == '-' || (ch >= '0' && ch <= '9')) {
+            i--;
+            return parse_number();
+        }
 
-		if (ch == 't')
-		    return expect("true", true);
-		
-		if (ch == 'f')
-		    return expect("false", false);
-		
-		if (ch == 'n')
-		    return expect("null", nullptr);
-		
-		if (ch == '"') {
-			auto s = parse_string();
-			return Json(s, this->currentRow);
-		}
-		
-		if (ch == '{') {
-			map<string, Json> data;
-			ch = get_next_token();
-			auto row = this->currentRow;
-			if (ch == '}')
-				return Json(data, row);
-			
-			while (1) {
-				if (ch != '"')
-				    return fail("expected '\"' in object, got " + esc(ch));
-				
-				string key = parse_string();
-				if (failed)
-				    return Json();
-				
-				ch = get_next_token();
-				if (ch != ':')
-				    return fail("expected ':' in object, got " + esc(ch));
-				
-				data[std::move(key)] = parse_json(depth + 1);
-				if (failed)
-				    return Json();
-				
-				ch = get_next_token();
-				if (ch == '}')
-				    break;
-				if (ch != ',')
-				    return fail("expected ',' in object, got " + esc(ch));
-				
-				ch = get_next_token();
-			}
-			return Json(data, row);
-		}
+        if (ch == 't')
+            return expect("true", true);
+        
+        if (ch == 'f')
+            return expect("false", false);
+        
+        if (ch == 'n')
+            return expect("null", nullptr);
+        
+        if (ch == '"') {
+            auto s = parse_string();
+            return Json(s, this->currentRow);
+        }
+        
+        if (ch == '{') {
+            map<string, Json> data;
+            ch = get_next_token();
+            auto row = this->currentRow;
+            if (ch == '}')
+                return Json(data, row);
+            
+            while (1) {
+                if (ch != '"')
+                    return fail("expected '\"' in object, got " + esc(ch));
+                
+                string key = parse_string();
+                if (failed)
+                    return Json();
+                
+                ch = get_next_token();
+                if (ch != ':')
+                    return fail("expected ':' in object, got " + esc(ch));
+                
+                data[std::move(key)] = parse_json(depth + 1);
+                if (failed)
+                    return Json();
+                
+                ch = get_next_token();
+                if (ch == '}')
+                    break;
+                if (ch != ',')
+                    return fail("expected ',' in object, got " + esc(ch));
+                
+                ch = get_next_token();
+            }
+            return Json(data, row);
+        }
 
-		if (ch == '[') {
-			auto row = this->currentRow;
-			vector<Json> data;
-			ch = get_next_token();
-			if (ch == ']')
-				return Json(data, row);
-			
-			while (1) {
-				i--;
-				data.push_back(parse_json(depth + 1));
-				if (failed)
-				    return Json();
-				
-				ch = get_next_token();
-				if (ch == ']')
-				    break;
-				if (ch != ',')
-				    return fail("expected ',' in list, got " + esc(ch));
-				
-				ch = get_next_token();
-				(void)ch;
-			}
-			return Json(data, row);
-		}
+        if (ch == '[') {
+            auto row = this->currentRow;
+            vector<Json> data;
+            ch = get_next_token();
+            if (ch == ']')
+                return Json(data, row);
+            
+            while (1) {
+                i--;
+                data.push_back(parse_json(depth + 1));
+                if (failed)
+                    return Json();
+                
+                ch = get_next_token();
+                if (ch == ']')
+                    break;
+                if (ch != ',')
+                    return fail("expected ',' in list, got " + esc(ch));
+                
+                ch = get_next_token();
+                (void)ch;
+            }
+            return Json(data, row);
+        }
 
-		return fail("expected value, got " + esc(ch));
-	}
+        return fail("expected value, got " + esc(ch));
+    }
 };
 }//namespace {
 
