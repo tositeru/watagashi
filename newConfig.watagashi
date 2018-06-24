@@ -10,7 +10,7 @@
   number of '#' must match!
 #####
 a is ABCDE ## comment at the end of the line in value ##
-a is ## # ### # a = "## # ###" #
+a is ## # ### # a = "## #### ###" #
 
 # string value
 str1 is Apple is fruits.
