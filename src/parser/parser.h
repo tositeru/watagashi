@@ -3,7 +3,7 @@
 #include <string>
 #include <boost/filesystem.hpp>
 
-namespace watagashi::parser
+namespace parser
 {
 
 void parse(boost::filesystem::path const& filepath);

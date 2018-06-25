@@ -117,7 +117,7 @@ struct Project
     std::string outputName;
     boost::filesystem::path outputPath;
     boost::filesystem::path intermediatePath;
-    //std::vector<std::string> dependences; //ŠO•”‚Åˆ—‚·‚é
+    //std::vector<std::string> dependences; //å¤–éƒ¨ã§å‡¦ç†ã™ã‚‹
     boost::filesystem::path rootDirectory;
 
     std::unordered_set<boost::filesystem::path> targets;

@@ -13,9 +13,6 @@
 namespace fs = boost::filesystem;
 using namespace std;
 
-namespace watagashi
-{
-
 std::string readFile(const fs::path& filepath)
 {
     if(!fs::exists(filepath)) {
@@ -59,14 +56,12 @@ bool runCommand(char const* command)
     return 0 == std::system(command);
 }
 
-}
-
 std::string demangle(char const* name)
 {
 #if defined(_WIN32) || defined(WIN32) || defined(BOOST_WINDOWS)
     std::string result;
     result.resize(std::strlen(name) * 2);// Enough buffers are necessary
-    DWORD length = UnDecorateSymbolName(name, &result[0], result.size(), UNDNAME_COMPLETE);
+    DWORD length = UnDecorateSymbolName(name, &result[0], (DWORD)result.size(), UNDNAME_COMPLETE);
     if (0 == length) {
         throw std::runtime_error("");
     }

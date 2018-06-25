@@ -127,7 +127,7 @@ std::string makeLinkCommand(
     if (!task.optionPrefix.empty()) {
         cmd << " " << task.optionPrefix;
     }
-    //TODO •Ï”‘Î‰ž ‹¤—Lƒ‰ƒCƒuƒ‰ƒŠ‚¾‚Æ•K—v‚É‚È‚Á‚Ä‚­‚é
+    //TODO å¤‰æ•°å¯¾å¿œ å…±æœ‰ãƒ©ã‚¤ãƒ–ãƒ©ãƒªã ã¨å¿…è¦ã«ãªã£ã¦ãã‚‹
 
     //output option
     if (!task.outputOption.empty()) {

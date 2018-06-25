@@ -1,0 +1,38 @@
+#pragma once
+
+#include <string>
+#include <functional>
+#include <boost/utility/string_view.hpp>
+
+namespace parser
+{
+
+class Line
+{
+public:
+    Line(char const* source_, size_t head_, size_t tail);
+
+    void resize(size_t headOffset, size_t tailOffset);
+
+    char const* get(size_t pos) const;
+    char const* rget(size_t pos)const;
+
+    bool isEndLine(size_t pos)const;
+
+    size_t getNextLineHead()const;
+    size_t length()const;
+    boost::string_view string() const;
+
+    size_t incrementPos(size_t start, std::function<bool(Line const& line, size_t p)> continueLoop)const;
+    bool find(size_t start, std::function<bool(Line const& line, size_t p)> didFound)const;
+
+    boost::string_view getIndent()const;
+
+private:
+    char const* mSource;
+    size_t mHead;
+    size_t mLength;
+
+};
+
+}

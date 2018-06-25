@@ -12,7 +12,7 @@
 #include "includeFileAnalyzer.h"
 #include "data.h"
 
-#include "parser.h"
+#include "parser/parser.h"
 
 using namespace json11;
 using namespace std;

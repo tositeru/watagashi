@@ -4,9 +4,6 @@
 #include <fstream>
 #include <boost/filesystem.hpp>
 
-namespace watagashi
-{
-
 std::string readFile(const boost::filesystem::path& filepath);
 bool createDirectory(const boost::filesystem::path& path);
 
@@ -32,7 +29,6 @@ public:
         this->mPred();
     }
 };
-}
 
 namespace std
 {
