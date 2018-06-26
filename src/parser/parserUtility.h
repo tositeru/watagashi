@@ -3,6 +3,8 @@
 #include <sstream>
 #include <string>
 
+#include <boost/utility/string_view.hpp>
+
 namespace parser
 {
 
@@ -16,6 +18,9 @@ enum class CommentType
 
 bool isCommentChar(char const* c);
 bool isSpace(char const* c);
+bool isNameChar(char const* c);
+bool isParentOrderAccessorChar(char const* c);
+bool isChildOrderAccessorString(boost::string_view const& str);
 
 class ErrorHandle
 {

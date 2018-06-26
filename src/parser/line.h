@@ -21,10 +21,12 @@ public:
 
     size_t getNextLineHead()const;
     size_t length()const;
-    boost::string_view string() const;
+    boost::string_view string_view() const;
+    boost::string_view substr(size_t start, size_t length)const;
 
     size_t incrementPos(size_t start, std::function<bool(Line const& line, size_t p)> continueLoop)const;
     bool find(size_t start, std::function<bool(Line const& line, size_t p)> didFound)const;
+    size_t skipSpace(size_t start)const;
 
     boost::string_view getIndent()const;
 

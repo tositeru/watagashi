@@ -41,8 +41,13 @@ size_t Line::getNextLineHead()const
 }
 
 size_t Line::length()const { return this->mLength; }
-boost::string_view Line::string() const {
+boost::string_view Line::string_view() const {
     return boost::string_view(&this->mSource[this->mHead], this->mLength);
+}
+
+boost::string_view Line::substr(size_t start, size_t length)const
+{
+    return boost::string_view(&this->mSource[this->mHead + start], std::min(length, this->mLength));
 }
 
 size_t Line::incrementPos(size_t start, std::function<bool(Line const& line, size_t p)> continueLoop)const
@@ -55,8 +60,15 @@ size_t Line::incrementPos(size_t start, std::function<bool(Line const& line, siz
 bool Line::find(size_t start, std::function<bool(Line const& line, size_t p)> didFound)const
 {
     bool result = false;
-    for (auto p = start; !this->isEndLine(p) && !(result = didFound(*this, p)); ++p) {}
+    for (auto p = start; !this->isEndLine(p) && !result; ++p) {
+        result = didFound(*this, p);
+    }
     return result;
+}
+
+size_t Line::skipSpace(size_t start)const
+{
+    return this->incrementPos(start, [](auto line, auto p) { return isSpace(line.get(p)); });
 }
 
 boost::string_view Line::getIndent()const

@@ -28,6 +28,9 @@ num3 is 1.34e2
 obj1 is [Object]
 # obj1.member1 = "obj1 is Orange"
 member1 in obj1 is Orange # Is "obj1.member1 is Orange" better than? #
+obj1.member1 is [Object]
+m2 in member1 in obj1 is Grape
+obj1.member1.m2 is Orange Orange
 
 obj2 is [Object]
   member1 is Jungo
