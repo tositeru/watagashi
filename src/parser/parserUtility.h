@@ -16,11 +16,24 @@ enum class CommentType
     EndOfLine,
 };
 
+enum class OperatorType
+{
+    Unknown,
+    Is,
+    Are,
+    Copy,
+    Extend,
+    PushBack,
+    Remove,
+};
+
 bool isCommentChar(char const* c);
 bool isSpace(char const* c);
 bool isNameChar(char const* c);
 bool isParentOrderAccessorChar(char const* c);
 bool isChildOrderAccessorString(boost::string_view const& str);
+OperatorType toOperatorType(boost::string_view const& str);
+boost::string_view const toString(OperatorType type);
 
 class ErrorHandle
 {
@@ -86,6 +99,24 @@ public:
 private:
     size_t mRow;
     std::stringstream mMessage;
+};
+
+}
+
+namespace std
+{
+
+template<> struct hash<boost::string_view>
+{
+    size_t operator()(boost::string_view const& right) const {
+        //FNV-1a hashes
+        size_t v = 12438926392u;
+        for (auto i = 0u; i < right.length(); ++i) {
+            v ^= static_cast<size_t>(right[i]);
+            v *= 547302934u;
+        }
+        return v;
+    }
 };
 
 }

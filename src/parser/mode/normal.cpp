@@ -19,6 +19,7 @@ ErrorHandle evalIndent(Enviroment& env, Line& line);
 static CommentType evalComment(Enviroment& env, Line& line);
 static boost::optional<boost::string_view> pickupName(Line const& line, size_t start);
 static std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_t start);
+static OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start);
 
 void NormalParseMode::parse(Enviroment& env, Line& line)
 {
@@ -44,12 +45,19 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
         return;
     }
 
+    auto opType = parseOperator(p, line, p);
+    if (OperatorType::Unknown == opType) {
+        cerr << env.source.row() << ": syntax error!! found unknown operater.\n"
+            << line.string_view() << endl;
+        return;
+    }
+
     cout << env.source.row() << "," << env.indent.currentLevel() << ":"
         << " name=";
     for (auto&& n : nestNames) {
         cout << n << ".";
     }
-    cout << endl;
+    cout << " op=" << toString(opType) << endl;
 }
 
 ErrorHandle evalIndent(Enviroment& env, Line& line)
@@ -196,9 +204,10 @@ std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_
         return {};
     }
     p += firstNameView->length();
-    p = line.skipSpace(p);
+    tailPos = p;
 
     INameAccessorParseTraits const* pAccessorParser = nullptr;
+    p = line.skipSpace(p);
     if (isParentOrderAccessorChar(line.get(p))) {
         // the name of the parent order
         pAccessorParser = &ParentOrderAccessorParseTraits::instance();
@@ -231,6 +240,15 @@ std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_
 
     tailPos = p;
     return result;
+}
+
+OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
+{
+    start = line.skipSpace(start);
+    auto p = line.incrementPos(start, [](auto line, auto p) { return !isSpace(line.get(p)); });
+    auto opType = toOperatorType(line.substr(start, p - start));
+    outTailPos = p;
+    return opType;
 }
 
 }

@@ -1,6 +1,10 @@
 #include "parserUtility.h"
 
 #include <cctype>
+#include <unordered_map>
+
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
 
 namespace parser
 {
@@ -35,6 +39,32 @@ bool isNameChar(char const* c)
         || '_' == *c
         || '?' == *c
         || '!' == *c;
+}
+
+using OperationBimap = boost::bimap<boost::string_view, OperatorType>;
+static const OperationBimap operationBimap = boost::assign::list_of<OperationBimap::relation>
+    ("is", OperatorType::Is )
+    ("are", OperatorType::Are)
+    ("copy", OperatorType::Copy )
+    ("extend", OperatorType::Extend)
+    ("push_back", OperatorType::PushBack)
+    ("remove", OperatorType::Remove);
+
+OperatorType toOperatorType(boost::string_view const& str)
+{
+    auto it = operationBimap.left.find(str);
+    return operationBimap.left.end() == it
+        ? OperatorType::Unknown
+        : it->get_right();
+}
+
+boost::string_view const toString(OperatorType type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = operationBimap.right.find(type);
+    return operationBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
 }
 
 }
