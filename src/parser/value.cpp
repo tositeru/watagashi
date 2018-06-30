@@ -54,7 +54,7 @@ void Value::pushValue(Value const& pushValue)
     boost::apply_visitor(PushValue(pushValue), this->data);
 }
 
-class AddMember : public boost::static_visitor<void>
+class AddMember : public boost::static_visitor<bool>
 {
     Scope const& mMember;
 public:
@@ -63,14 +63,27 @@ public:
     {}
 
     template<typename T>
-    void operator()(T&)const
+    bool operator()(T&)const
     {
         AWESOME_THROW(std::runtime_error)
             << "invalid operation. this value don't add a member. Only object enable to add a member.";
+        return false;
     }
 
     template<>
-    void operator()(Value::object& obj)const
+    bool operator()(Value::array& arr)const
+    {
+        auto& name = this->mMember.nestName.back();
+        int index = std::stoi(name);
+        if (0 <= index && index < arr.size()) {
+            arr[index] = this->mMember.value;
+            return true;
+        }
+        return false;
+    }
+
+    template<>
+    bool operator()(Value::object& obj)const
     {
         auto& objName = this->mMember.nestName.back();
         auto it = obj.find(objName);
@@ -79,13 +92,14 @@ public:
         } else {
             it->second = this->mMember.value;
         }
+        return true;
     }
 
 };
 
-void Value::addMember(Scope const& member)
+bool Value::addMember(Scope const& member)
 {
-    boost::apply_visitor(AddMember(member), this->data);
+    return boost::apply_visitor(AddMember(member), this->data);
 }
 
 class AppendString : public boost::static_visitor<void>

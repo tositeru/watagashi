@@ -76,7 +76,7 @@ void parse(char const* source_, std::size_t length)
                 case Value::Type::String: cout << "'" << childValue.get<Value::string>() << "'" << endl; break;
                 case Value::Type::Number: cout << childValue.get<Value::number>() << endl; break;
                 default:
-                    cout << endl;
+                    cout << childValue.toString() << endl;
                 }
             }
             cout << endl;
@@ -85,6 +85,12 @@ void parse(char const* source_, std::size_t length)
             cout << "(unknown)" << endl;
             break;
         }
+    }
+    ErrorHandle error;
+    auto& arr3 = env.currentScope().value.getChild("array3", error).get<Value::array>();
+    auto& elements = arr3.at(3).get<Value::array>();
+    for (auto& e : elements) {
+        cout << e.toString() << endl;
     }
 }
 

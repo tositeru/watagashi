@@ -119,9 +119,14 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
 
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
 {
-    auto valuePos = start;
+    auto valuePos = line.skipSpace(start);
+    if (line.isEndLine(valuePos)) {
+        return valuePos;
+    }
+
     auto tail = line.incrementPos(valuePos, [](auto line, auto p) {
         return !isArrayElementSeparater(line.get(p)); });
+
     do {
         auto valueLine = Line(line.get(valuePos), 0, tail - valuePos);
         env.pushScope(Scope(std::list<std::string>{""}, Value()));
@@ -163,6 +168,8 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
         auto rawObjectName = valueLine.substr(1, p-1);
         if ("Array" == rawObjectName) {
             env.currentScope().value.init(Value::Type::Array);
+            auto start = valueLine.skipSpace(p+1);
+            parseArrayElement(env, valueLine,  start);
         } else {
             env.currentScope().value.init(Value::Type::Object);
         }
@@ -272,7 +279,6 @@ boost::optional<boost::string_view> pickupName(Line const& line, size_t start)
     auto p = line.incrementPos(start, [](auto line, auto p) {
         auto c = line.get(p);
         return !(isSpace(c) || isParentOrderAccessorChar(c));
-        return !(isSpace(c) || isChildOrderAccessorString(c) || isParentOrderAccessorChar(c));
     });
     auto nameStr = Line(line.get(start), 0, p - start);
     if ( nameStr.find(0, [](auto line, auto p) { return !isNameChar(line.get(p)); }) ) {
@@ -454,10 +460,18 @@ ErrorHandle closeTopScope(Enviroment& env)
 
     switch (pParentValue->type) {
     case Value::Type::Object:
-        pParentValue->addMember(currentScope);
+        if (!pParentValue->addMember(currentScope)) {
+            return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope object.";
+        }
         break;
     case Value::Type::Array:
-        pParentValue->pushValue(currentScope.value);
+        if ("" == currentScope.nestName.back()) {
+            pParentValue->pushValue(currentScope.value);
+        } else {
+            if (!pParentValue->addMember(currentScope)) {
+                return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope array because it was a index out of range.";
+            }
+        }
         break;
     default:
         return MakeErrorHandle(env.source.row()) << "syntax error!! The current value can not have children.";

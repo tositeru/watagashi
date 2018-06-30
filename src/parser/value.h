@@ -56,7 +56,7 @@ struct Value
 
 
     void pushValue(Value const& pushValue);
-    void addMember(Scope const& member);
+    bool addMember(Scope const& member);
     void appendStr(boost::string_view const& strView);
 
     std::string toString()const;
