@@ -47,13 +47,13 @@ void parse(char const* source_, std::size_t length)
         }
     }
 
-    auto& object = boost::get<Value::object>(env.currentScope().value.data);
+    auto& object = env.currentScope().value.get<Value::object>();
     cout << "member count=" << object.size() << endl;
     for (auto& [name, value] : object) {
         cout << "Type of " << name << " is " << Value::toString(value.type) << ":";
         switch (value.type) {
-        case Value::Type::String: cout << "'" << boost::get<Value::string>(value.data) << "'" << endl; break;
-        case Value::Type::Number: cout << boost::get<Value::number>(value.data) << endl;  break;
+        case Value::Type::String: cout << "'" << value.get<Value::string>() << "'" << endl; break;
+        case Value::Type::Number: cout << value.get<Value::number>() << endl;  break;
         case Value::Type::Array:
             cout << endl;
             for (auto& element : value.get<Value::array>()) {
@@ -64,16 +64,19 @@ void parse(char const* source_, std::size_t length)
             break;
         case Value::Type::Object:
             cout << endl;
-            for (auto& [childName, childValue] : boost::get<Value::object>(value.data)) {
+            for (auto& [childName, childValue] : value.get<Value::object>()) {
                 cout << "  " << "Type of " << childName << " is " << Value::toString(childValue.type) << ":";
                 switch (childValue.type) {
-                case Value::Type::String: cout << "'" << boost::get<Value::string>(childValue.data) << "'" << endl; break;
-                case Value::Type::Number: cout << boost::get<Value::number>(childValue.data) << endl; break;
+                case Value::Type::String: cout << "'" << childValue.get<Value::string>() << "'" << endl; break;
+                case Value::Type::Number: cout << childValue.get<Value::number>() << endl; break;
                 default:
                     cout << endl;
                 }
             }
             cout << endl;
+            break;
+        default:
+            cout << "(unknown)" << endl;
             break;
         }
     }

@@ -150,6 +150,8 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
 
 ErrorHandle parseValue(Enviroment& env, Line& valueLine)
 {
+    auto start = valueLine.skipSpace(0);
+    valueLine.resize(start, 0);
     if ('[' == *valueLine.get(0)) {
         // decide the value to be Object.
         auto p = valueLine.incrementPos(1, [](auto line, auto p) { return ']' != *line.get(p); });
@@ -171,21 +173,23 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
 
     } else {
         auto str = valueLine.string_view().to_string();
-        size_t pos;
-        try {
-            Value::number num = std::stod(str, &pos);
-            if (str.size() == pos) {
+        char* tail;
+        auto num = strtod(str.c_str(), &tail);
+        if (0 == num) {
+            bool isNumber = ('0' == str[0]);
+            isNumber |= (2 <= str.size() && ('-' == str[0] && '0' == str[1]));
+
+            if (isNumber) {
                 env.currentScope().value = Value().init(Value::Type::Number);
                 env.currentScope().value.data = num;
             } else {
                 env.currentScope().value = Value().init(Value::Type::String);
                 env.currentScope().value.data = str;
             }
-        } catch (std::invalid_argument&) {
-            env.currentScope().value = Value().init(Value::Type::String);
-            env.currentScope().value.data = str;
+        } else {
+            env.currentScope().value = Value().init(Value::Type::Number);
+            env.currentScope().value.data = num;
         }
-
     }
 
     return {};
