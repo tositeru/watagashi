@@ -50,6 +50,11 @@ public:
     ErrorHandle(ErrorHandle &&) = default;
     ErrorHandle& operator=(ErrorHandle &&) = default;
 
+    ErrorHandle(size_t row, ErrorHandle && right)
+        : mRow(row)
+        , mMessage(std::move(right.mMessage))
+    {}
+
     ErrorHandle()
         : mRow(static_cast<size_t>(-1))
         , mMessage()
@@ -62,7 +67,11 @@ public:
 
     size_t row()const { return this->mRow; }
     std::string message()const {
-        return std::to_string(this->mRow) + ": " + this->mMessage;
+        if (0 != this->mRow) {
+            return std::to_string(this->mRow) + ": " + this->mMessage;
+        } else {
+            return this->mMessage;
+        }
     }
 
 private:

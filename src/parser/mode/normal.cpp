@@ -15,11 +15,13 @@ using namespace std;
 namespace parser
 {
 
-ErrorHandle evalIndent(Enviroment& env, Line& line);
+static ErrorHandle evalIndent(Enviroment& env, Line& line, int& outLevel);
 static CommentType evalComment(Enviroment& env, Line& line);
 static boost::optional<boost::string_view> pickupName(Line const& line, size_t start);
 static std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_t start);
 static OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start);
+static Value::Type parseValueType(Line const& line, size_t start, OperatorType opType);
+static ErrorHandle closeTopScope(Enviroment& env);
 
 void NormalParseMode::parse(Enviroment& env, Line& line)
 {
@@ -28,7 +30,8 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
         return;
     }
 
-    if (auto error = evalIndent(env, line)) {
+    int level;
+    if (auto error = evalIndent(env, line, level)) {
         cerr << error.message() << endl;
         return;
     }
@@ -37,30 +40,110 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
         return;
     }
 
-    size_t p = 0;
-    auto nestNames = parseName(p, line, 0);
-    if (nestNames.empty()) {
-        cerr << env.source.row() << ": syntax error!! found invalid character.\n"
+    int resultCompared = env.compareIndentLevel(level);
+    if ( 0 < resultCompared) {
+        cerr << env.source.row() << ": syntax error!! An indent above current scope depth is described.\n"
             << line.string_view() << endl;
         return;
     }
 
-    auto opType = parseOperator(p, line, p);
-    if (OperatorType::Unknown == opType) {
-        cerr << env.source.row() << ": syntax error!! found unknown operater.\n"
-            << line.string_view() << endl;
-        return;
+    if (resultCompared < 0) {
+        while (0 != env.compareIndentLevel(level)) {
+            // close top scope.
+            if (auto error = closeTopScope(env)) {
+                cerr << error.message() << "\n"
+                    << line.string_view() << endl;
+            }
+        }
     }
 
-    cout << env.source.row() << "," << env.indent.currentLevel() << ":"
-        << " name=";
-    for (auto&& n : nestNames) {
-        cout << n << ".";
+    if (Value::Type::Object == env.currentScope().valueType()) {
+        size_t p = 0;
+        auto nestNames = parseName(p, line, 0);
+        if (nestNames.empty()) {
+            cerr << env.source.row() << ": syntax error!! found invalid character.\n"
+                << line.string_view() << endl;
+            return;
+        }
+
+        auto opType = parseOperator(p, line, p);
+        if (OperatorType::Unknown == opType) {
+            cerr << env.source.row() << ": syntax error!! found unknown operater.\n"
+                << line.string_view() << endl;
+            return;
+        }
+
+        Value::Type valueType = parseValueType(line, p, opType);
+        env.pushScope(Scope(nestNames, Value().init(valueType)));
+        if (OperatorType::Are == opType) {
+            env.pushScope(Scope(std::list<std::string>{ "" }, Value().init(Value::Type::Array)));
+        }
+        p = line.skipSpace(p);
+
+        // parse value
+        auto valueLine = Line(line.get(p), 0, line.length()-p);
+        if ('[' == *valueLine.get(0)) {
+            // decide the value to be Object.
+            auto p = valueLine.incrementPos(1, [](auto line, auto p) { return ']' != *line.get(p); });
+            if (valueLine.length() <= p) {
+                cerr << env.source.row() << ": syntax error!! The object name is not encloded in square brackets([...]).\n"
+                    << line.string_view() << endl;
+
+                env.popScope();
+                return;
+            }
+            auto rawObjectName = valueLine.substr(1, p);
+            //auto nestNames = parseName(p, valueLine, 1);
+
+            if (Value::Type::Array == env.currentScope().valueType()) {
+                env.currentScope().value.pushValue(Value().init(Value::Type::Object));
+            } else {
+                env.currentScope().value.init(Value::Type::Object);
+            }
+        } else if ('\\' == *valueLine.get(0)) {
+            env.currentScope().value.data = valueLine.substr(1, valueLine.length()-1).to_string();
+
+        } else {
+            auto str = valueLine.string_view().to_string();
+            size_t pos;
+            try {
+                Value::number num = std::stod(str, &pos);
+                if (str.size() == pos) {
+                    env.currentScope().value = Value().init(Value::Type::Number);
+                    env.currentScope().value.data = num;
+                } else {
+                    env.currentScope().value = Value().init(Value::Type::String);
+                    env.currentScope().value.data = str;
+                }
+            } catch (std::invalid_argument& ) {
+                env.currentScope().value = Value().init(Value::Type::String);
+                env.currentScope().value.data = str;
+            }
+        }
+
+        cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
+            << " name=";
+        for (auto&& n : nestNames) {
+            cout << n << ".";
+        }
+        cout << " op=" << toString(opType) << ": scopeLevel=" << env.scopeStack.size() << endl;
+
+    } else if (Value::Type::String == env.currentScope().valueType()) {
+        env.currentScope().value.appendStr(line.string_view());
+
+    } else if (Value::Type::Number == env.currentScope().valueType()) {
+        // Convert Number to String when scope is multiple line.
+        auto str = Value().init(Value::Type::String);
+        str.data = std::to_string(env.currentScope().value.get<Value::number>());
+        env.currentScope().value = str;
+
+    } else {
+        cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
+            << Value::toString(env.currentScope().valueType()) << endl;
     }
-    cout << " op=" << toString(opType) << endl;
 }
 
-ErrorHandle evalIndent(Enviroment& env, Line& line)
+ErrorHandle evalIndent(Enviroment& env, Line& line, int& outLevel)
 {
     auto indent = line.getIndent();
     auto level = env.indent.calLevel(indent); 
@@ -84,6 +167,7 @@ ErrorHandle evalIndent(Enviroment& env, Line& line)
     }
 
     line.resize(indent.size(), 0);
+    outLevel = env.indent.currentLevel();
     return {};
 }
 
@@ -249,6 +333,84 @@ OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
     auto opType = toOperatorType(line.substr(start, p - start));
     outTailPos = p;
     return opType;
+}
+
+Value::Type parseValueType(Line const& line, size_t start, OperatorType opType)
+{
+    if (opType == OperatorType::Are) {
+        return Value::Type::Array;
+    }
+
+    return Value::Type::String;
+}
+
+ErrorHandle closeTopScope(Enviroment& env)
+{
+    Scope currentScope = env.currentScope();
+    env.popScope();
+
+    Value* pParentValue = nullptr;
+    if (2 <= currentScope.nestName.size()) {
+        // search parent value
+        auto rootName = currentScope.nestName.front();
+        for (auto scopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != scopeIt; ++scopeIt) {
+            if (scopeIt->nestName.back() == rootName) {
+                pParentValue = &scopeIt->value;
+                break;
+            }
+            if (scopeIt->value.isExsitChild(rootName)) {
+                ErrorHandle error;
+                auto& childValue = scopeIt->value.getChild(rootName, error);
+                if (error) {
+                    return ErrorHandle(env.source.row(), std::move(error));
+                }
+                pParentValue = &childValue;
+                break;
+            }
+        }
+        if (nullptr == pParentValue) {
+            return MakeErrorHandle(env.source.row())
+                << "scope searching error!! Don't found '"<< rootName << "' in scope stack.";
+        }
+
+        //
+        auto nestNameIt = ++currentScope.nestName.begin();
+        auto endIt = --currentScope.nestName.end();
+        for (; endIt != nestNameIt; ++nestNameIt) {
+            ErrorHandle error;
+            auto& childValue = pParentValue->getChild(*nestNameIt, error);
+            if (error) {
+                if (Value::Type::Object == pParentValue->type) {
+                    auto it = currentScope.nestName.begin();
+                    auto name = *it;
+                    for (++it; nestNameIt != it; ++it) {
+                        name = "." + (*it);
+                    }
+                    return MakeErrorHandle(env.source.row())
+                        << error.message() << "n"
+                        << "scope searching error!! Don't found '" << *nestNameIt << "' in '" << name << "'.";
+                } else {
+                    return ErrorHandle(env.source.row(), std::move(error));
+                }
+            }
+            pParentValue = &childValue;
+        }
+    } else {
+        pParentValue = &env.currentScope().value;
+    }
+
+    switch (pParentValue->type) {
+    case Value::Type::Object:
+        pParentValue->addMember(currentScope);
+        break;
+    case Value::Type::Array:
+        pParentValue->pushValue(currentScope.value);
+        break;
+    default:
+        return MakeErrorHandle(env.source.row()) << "syntax error!! The current value can not have children.";
+    }
+
+    return {};
 }
 
 }

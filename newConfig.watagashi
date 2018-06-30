@@ -36,6 +36,8 @@ obj2 is [Object]
   member1 is Jungo
   member2 is Sabata
   member3 is Lita
+  member4 are Apple
+  
 # copy obj2
 obj3 copy obj2
 

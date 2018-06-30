@@ -11,6 +11,7 @@ if(MSVC)
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
   endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D\"_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING\"")
   add_compile_options("/source-charset:utf-8") # Visual Studio 2015, or greater
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
@@ -63,6 +64,9 @@ target_sources(watagashi
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/normal.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/multiLineComment.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/multiLineComment.cpp"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.cpp"
 )
 
 include_directories(
