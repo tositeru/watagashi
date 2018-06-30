@@ -25,8 +25,6 @@ struct NoneValue
 
 struct Value
 {
-    static Value const none;
-
     enum class Type
     {
         None,
@@ -40,6 +38,9 @@ struct Value
     using number = double;
     using array = std::vector<Value>;
     using object = std::unordered_map<std::string, Value>;
+
+    static Value const none;
+    static boost::string_view toString(Type type);
 
     Type type;
     boost::variant<
@@ -58,7 +59,7 @@ struct Value
     void addMember(Scope const& member);
     void appendStr(boost::string_view const& strView);
 
-    static boost::string_view toString(Type type);
+    std::string toString()const;
 
     template<typename T> T& get()
     {

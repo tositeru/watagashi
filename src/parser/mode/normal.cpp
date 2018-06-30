@@ -22,6 +22,8 @@ static std::list<boost::string_view> parseName(size_t& tailPos, Line const& line
 static OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start);
 static Value::Type parseValueType(Line const& line, size_t start, OperatorType opType);
 static ErrorHandle closeTopScope(Enviroment& env);
+static ErrorHandle parseValue(Enviroment& env, Line& valueLine);
+static size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
 
 void NormalParseMode::parse(Enviroment& env, Line& line)
 {
@@ -75,49 +77,19 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
 
         Value::Type valueType = parseValueType(line, p, opType);
         env.pushScope(Scope(nestNames, Value().init(valueType)));
-        if (OperatorType::Are == opType) {
-            env.pushScope(Scope(std::list<std::string>{ "" }, Value().init(Value::Type::Array)));
-        }
-        p = line.skipSpace(p);
 
         // parse value
-        auto valueLine = Line(line.get(p), 0, line.length()-p);
-        if ('[' == *valueLine.get(0)) {
-            // decide the value to be Object.
-            auto p = valueLine.incrementPos(1, [](auto line, auto p) { return ']' != *line.get(p); });
-            if (valueLine.length() <= p) {
-                cerr << env.source.row() << ": syntax error!! The object name is not encloded in square brackets([...]).\n"
-                    << line.string_view() << endl;
-
-                env.popScope();
-                return;
-            }
-            auto rawObjectName = valueLine.substr(1, p);
-            //auto nestNames = parseName(p, valueLine, 1);
-
-            if (Value::Type::Array == env.currentScope().valueType()) {
-                env.currentScope().value.pushValue(Value().init(Value::Type::Object));
-            } else {
-                env.currentScope().value.init(Value::Type::Object);
-            }
-        } else if ('\\' == *valueLine.get(0)) {
-            env.currentScope().value.data = valueLine.substr(1, valueLine.length()-1).to_string();
+        p = line.skipSpace(p);
+        if (Value::Type::Array == env.currentScope().valueType()) {
+            p = parseArrayElement(env, line, p);
 
         } else {
-            auto str = valueLine.string_view().to_string();
-            size_t pos;
-            try {
-                Value::number num = std::stod(str, &pos);
-                if (str.size() == pos) {
-                    env.currentScope().value = Value().init(Value::Type::Number);
-                    env.currentScope().value.data = num;
-                } else {
-                    env.currentScope().value = Value().init(Value::Type::String);
-                    env.currentScope().value.data = str;
-                }
-            } catch (std::invalid_argument& ) {
-                env.currentScope().value = Value().init(Value::Type::String);
-                env.currentScope().value.data = str;
+            auto valueLine = Line(line.get(p), 0, line.length() - p);
+            if (auto error = parseValue(env, valueLine)) {
+                cerr << error.message()
+                    << line.string_view() << endl;
+                env.popScope();
+                return;
             }
         }
 
@@ -127,6 +99,8 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
             cout << n << ".";
         }
         cout << " op=" << toString(opType) << ": scopeLevel=" << env.scopeStack.size() << endl;
+    } else if (Value::Type::Array == env.currentScope().valueType()) {
+        auto p = parseArrayElement(env, line, 0);
 
     } else if (Value::Type::String == env.currentScope().valueType()) {
         env.currentScope().value.appendStr(line.string_view());
@@ -141,6 +115,80 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
         cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
             << Value::toString(env.currentScope().valueType()) << endl;
     }
+}
+
+size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
+{
+    auto valuePos = start;
+    auto tail = line.incrementPos(valuePos, [](auto line, auto p) {
+        return !isArrayElementSeparater(line.get(p)); });
+    do {
+        auto valueLine = Line(line.get(valuePos), 0, tail - valuePos);
+        env.pushScope(Scope(std::list<std::string>{""}, Value()));
+        if (auto error = parseValue(env, valueLine)) {
+            cerr << error.message()
+                << line.string_view() << endl;
+            env.popScope();
+            return valuePos;
+        }
+        valuePos = line.skipSpace(tail + 1);
+
+        tail = line.incrementPos(valuePos, [](auto line, auto p) {
+            return !isArrayElementSeparater(line.get(p)); });
+
+        if (line.isEndLine(valuePos)) {
+            break;
+        }
+
+        if (auto error = closeTopScope(env)) {
+            cerr << error.message() << "\n"
+                << line.string_view() << endl;
+        }
+    } while (!line.isEndLine(valuePos));
+    return valuePos;
+}
+
+ErrorHandle parseValue(Enviroment& env, Line& valueLine)
+{
+    if ('[' == *valueLine.get(0)) {
+        // decide the value to be Object.
+        auto p = valueLine.incrementPos(1, [](auto line, auto p) { return ']' != *line.get(p); });
+        if (valueLine.length() <= p) {
+            return MakeErrorHandle(env.source.row())
+                << env.source.row() << ": syntax error!! The object name is not encloded in square brackets([...]).\n";
+        }
+
+        auto rawObjectName = valueLine.substr(1, p-1);
+        if ("Array" == rawObjectName) {
+            env.currentScope().value.init(Value::Type::Array);
+        } else {
+            env.currentScope().value.init(Value::Type::Object);
+        }
+
+    } else if ('\\' == *valueLine.get(0)) {
+        env.currentScope().value.init(Value::Type::String);
+        env.currentScope().value.data = valueLine.substr(1, valueLine.length() - 1).to_string();
+
+    } else {
+        auto str = valueLine.string_view().to_string();
+        size_t pos;
+        try {
+            Value::number num = std::stod(str, &pos);
+            if (str.size() == pos) {
+                env.currentScope().value = Value().init(Value::Type::Number);
+                env.currentScope().value.data = num;
+            } else {
+                env.currentScope().value = Value().init(Value::Type::String);
+                env.currentScope().value.data = str;
+            }
+        } catch (std::invalid_argument&) {
+            env.currentScope().value = Value().init(Value::Type::String);
+            env.currentScope().value.data = str;
+        }
+
+    }
+
+    return {};
 }
 
 ErrorHandle evalIndent(Enviroment& env, Line& line, int& outLevel)

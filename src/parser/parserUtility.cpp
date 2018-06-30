@@ -41,6 +41,12 @@ bool isNameChar(char const* c)
         || '!' == *c;
 }
 
+bool isArrayElementSeparater(char const* c)
+{
+    return ',' == *c;
+}
+
+
 using OperationBimap = boost::bimap<boost::string_view, OperatorType>;
 static const OperationBimap operationBimap = boost::assign::list_of<OperationBimap::relation>
     ("is", OperatorType::Is )

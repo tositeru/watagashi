@@ -134,6 +134,46 @@ boost::string_view Value::toString(Type type)
         : it->get_left();
 }
 
+class ToString : public boost::static_visitor<std::string>
+{
+public:
+    std::string operator()(NoneValue const& none)const
+    {
+        return "[None]";
+    }
+
+    std::string operator()(Value::string const& str)const
+    {
+        return str;
+    }
+
+    std::string operator()(Value::number const& num)const
+    {
+        return std::to_string(num);
+    }
+
+    std::string operator()(Value::array const& arr)const
+    {
+        return "[Array](" + std::to_string(arr.size()) + ")";
+    }
+
+    std::string operator()(Value::object const& obj)const
+    {
+        return "[Object](" + std::to_string(obj.size()) + ")";
+    }
+
+    std::string operator()(ObjectDefined const& objDefined)const
+    {
+        return "[ObjectDefined]";
+    }
+
+};
+
+std::string Value::toString()const
+{
+    return boost::apply_visitor(ToString(), this->data);
+}
+
 bool Value::isExsitChild(std::string const& name)const
 {
     switch (this->type) {
