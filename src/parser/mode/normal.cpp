@@ -93,12 +93,12 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
             }
         }
 
-        cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
-            << " name=";
-        for (auto&& n : nestNames) {
-            cout << n << ".";
-        }
-        cout << " op=" << toString(opType) << ": scopeLevel=" << env.scopeStack.size() << endl;
+        //cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
+        //    << " name=";
+        //for (auto&& n : nestNames) {
+        //    cout << n << ".";
+        //}
+        //cout << " op=" << toString(opType) << ": scopeLevel=" << env.scopeStack.size() << endl;
     } else if (Value::Type::Array == env.currentScope().valueType()) {
         auto p = parseArrayElement(env, line, 0);
 
@@ -271,6 +271,7 @@ boost::optional<boost::string_view> pickupName(Line const& line, size_t start)
     // search including illegal characters
     auto p = line.incrementPos(start, [](auto line, auto p) {
         auto c = line.get(p);
+        return !(isSpace(c) || isParentOrderAccessorChar(c));
         return !(isSpace(c) || isChildOrderAccessorString(c) || isParentOrderAccessorChar(c));
     });
     auto nameStr = Line(line.get(start), 0, p - start);

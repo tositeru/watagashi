@@ -28,8 +28,8 @@ bool isParentOrderAccessorChar(char const* c)
 
 bool isChildOrderAccessorString(boost::string_view const& str)
 {
-    if (str.length() < 2) { return false; }
-    static char const* keyward = "in";
+    static std::string const keyward = "in";
+    if (str.length() < keyward.size()) { return false; }
     return keyward[0] == str[0] && keyward[1] == str[1];
 }
 

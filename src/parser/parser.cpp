@@ -22,6 +22,12 @@ namespace parser
 void parse(boost::filesystem::path const& filepath)
 {
     auto source = readFile(filepath);
+    for (int i = static_cast<int>(source.size())-1; 0 <= i; --i) {
+        if ('\0' != source[i]) {
+            source.resize(i+1);
+            break;
+        }
+    }
     parse(source);
 }
 
