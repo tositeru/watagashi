@@ -26,6 +26,105 @@ Value& Value::init(Type type_)
     return *this;
 }
 
+Value& Value::operator=(Value const& right)
+{
+    this->data = right.data;
+    this->type = right.type;
+    return *this;
+}
+
+Value& Value::operator=(NoneValue const& right)
+{
+    this->data = right;
+    this->type = Type::None;
+    return *this;
+}
+
+Value& Value::operator=(string const& right)
+{
+    this->data = right;
+    this->type = Type::String;
+    return *this;
+}
+
+Value& Value::operator=(number const& right)
+{
+    this->data = right;
+    this->type = Type::Number;
+    return *this;
+}
+
+Value& Value::operator=(array const& right)
+{
+    this->data = right;
+    this->type = Type::Array;
+    return *this;
+}
+
+Value& Value::operator=(object const& right)
+{
+    this->data = right;
+    this->type = Type::Object;
+    return *this;
+}
+
+Value& Value::operator=(ObjectDefined const& right)
+{
+    this->data = right;
+    this->type = Type::ObjectDefined;
+    return *this;
+}
+
+Value& Value::operator=(Value && right)
+{
+    this->data = std::move(right.data);
+    this->type = right.type;
+    return *this;
+}
+
+Value& Value::operator=(NoneValue && right)
+{
+    this->data = std::move(right);
+    this->type = Type::None;
+    return *this;
+}
+
+Value& Value::operator=(string && right)
+{
+    this->data = std::move(right);
+    this->type = Type::String;
+    return *this;
+}
+
+Value& Value::operator=(number && right)
+{
+    this->data = std::move(right);
+    this->type = Type::Number;
+    return *this;
+}
+
+Value& Value::operator=(array && right)
+{
+    this->data = std::move(right);
+    this->type = Type::Array;
+    return *this;
+}
+
+Value& Value::operator=(object && right)
+{
+    this->data = std::move(right);
+    this->type = Type::Object;
+    return *this;
+}
+
+Value& Value::operator=(ObjectDefined && right)
+{
+    this->data = std::move(right);
+    this->type = Type::ObjectDefined;
+    return *this;
+}
+
+
 class PushValue : public boost::static_visitor<void>
 {
     Value const& mPushValue;

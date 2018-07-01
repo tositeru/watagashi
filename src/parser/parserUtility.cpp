@@ -46,6 +46,12 @@ bool isArrayElementSeparater(char const* c)
     return ',' == *c;
 }
 
+bool isExplicitStringArrayElementSeparater(boost::string_view const& str)
+{
+    static std::string const keyward = "\\,";
+    if (str.length() < keyward.size()) { return false; }
+    return keyward[0] == str[0] && keyward[1] == str[1];
+}
 
 using OperationBimap = boost::bimap<boost::string_view, OperatorType>;
 static const OperationBimap operationBimap = boost::assign::list_of<OperationBimap::relation>

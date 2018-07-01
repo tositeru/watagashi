@@ -124,8 +124,19 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
         return valuePos;
     }
 
-    auto tail = line.incrementPos(valuePos, [](auto line, auto p) {
-        return !isArrayElementSeparater(line.get(p)); });
+    auto getTail = [](Line& line, size_t start) -> size_t {
+        // search explicit separator of string array element 
+        for (auto p = start; !line.isEndLine(p+1); ++p) {
+            auto strView = boost::string_view(line.get(p), 2);
+            if (isExplicitStringArrayElementSeparater(strView)) {
+                return p;
+            }
+        }
+
+        return  line.incrementPos(start, [](auto line, auto p) {
+            return !isArrayElementSeparater(line.get(p)); });
+    };
+    auto tail = getTail(line, valuePos);
 
     do {
         auto valueLine = Line(line.get(valuePos), 0, tail - valuePos);
@@ -136,14 +147,14 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
             env.popScope();
             return valuePos;
         }
-        valuePos = line.skipSpace(tail + 1);
 
-        tail = line.incrementPos(valuePos, [](auto line, auto p) {
-            return !isArrayElementSeparater(line.get(p)); });
+        tail += ('\\' == *line.get(tail)) ? 2 : 1;
+        valuePos = line.skipSpace(tail);
 
         if (line.isEndLine(valuePos)) {
             break;
         }
+        tail = getTail(line, valuePos);
 
         if (auto error = closeTopScope(env)) {
             cerr << error.message() << "\n"
@@ -175,8 +186,7 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
         }
 
     } else if ('\\' == *valueLine.get(0)) {
-        env.currentScope().value.init(Value::Type::String);
-        env.currentScope().value.data = valueLine.substr(1, valueLine.length() - 1).to_string();
+        env.currentScope().value = valueLine.substr(1, valueLine.length() - 1).to_string();
 
     } else {
         auto str = valueLine.string_view().to_string();
@@ -187,15 +197,12 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
             isNumber |= (2 <= str.size() && ('-' == str[0] && '0' == str[1]));
 
             if (isNumber) {
-                env.currentScope().value = Value().init(Value::Type::Number);
-                env.currentScope().value.data = num;
+                env.currentScope().value = num;
             } else {
-                env.currentScope().value = Value().init(Value::Type::String);
-                env.currentScope().value.data = str;
+                env.currentScope().value = str;
             }
         } else {
-            env.currentScope().value = Value().init(Value::Type::Number);
-            env.currentScope().value.data = num;
+            env.currentScope().value = num;
         }
     }
 
@@ -263,9 +270,7 @@ CommentType evalComment(Enviroment& env, Line& line)
         }
         if (count == KEYWARD_COUNT) {
             // remove space characters before comment.
-            p = line.incrementPos(p, [](auto line, auto p) {
-                return isSpace(line.rget(p));
-            });
+            p = line.skipSpace(p);
             line.resize(0, p);
         }
         return CommentType::EndOfLine;
@@ -355,7 +360,7 @@ std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_
         // the name of the parent order
         pAccessorParser = &ParentOrderAccessorParseTraits::instance();
     } else if (isChildOrderAccessorString(line.substr(p, 2))) {
-        // the name of the children order
+        // the name of the child order
         pAccessorParser = &ChildOrderAccessorParseTraits::instance();
     } else {
         return { *firstNameView };
@@ -405,12 +410,16 @@ Value::Type parseValueType(Line const& line, size_t start, OperatorType opType)
 
 ErrorHandle closeTopScope(Enviroment& env)
 {
+    // note: At the timing of closing the scope,
+    //  we assign values to appropriate places.
+    // etc) object member, array element or other places.
+
     Scope currentScope = env.currentScope();
     env.popScope();
 
     Value* pParentValue = nullptr;
     if (2 <= currentScope.nestName.size()) {
-        // search parent value
+        // Find the starting point of the appropriate place.
         auto rootName = currentScope.nestName.front();
         for (auto scopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != scopeIt; ++scopeIt) {
             if (scopeIt->nestName.back() == rootName) {
@@ -432,7 +441,7 @@ ErrorHandle closeTopScope(Enviroment& env)
                 << "scope searching error!! Don't found '"<< rootName << "' in scope stack.";
         }
 
-        //
+        // Find a assignment destination at starting point.
         auto nestNameIt = ++currentScope.nestName.begin();
         auto endIt = --currentScope.nestName.end();
         for (; endIt != nestNameIt; ++nestNameIt) {

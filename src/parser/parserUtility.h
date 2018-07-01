@@ -33,6 +33,7 @@ bool isNameChar(char const* c);
 bool isParentOrderAccessorChar(char const* c);
 bool isChildOrderAccessorString(boost::string_view const& str);
 bool isArrayElementSeparater(char const* c);
+bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
 
 OperatorType toOperatorType(boost::string_view const& str);
 boost::string_view const toString(OperatorType type);

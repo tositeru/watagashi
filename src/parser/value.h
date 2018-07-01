@@ -52,8 +52,25 @@ struct Value
         ObjectDefined> data;
 
     Value() = default;
+    Value(Value const&) = default;
+    Value(Value &&) = default;
     Value& init(Type type_);
 
+    Value& operator=(Value const&);
+    Value& operator=(NoneValue const& right);
+    Value& operator=(string const& right);
+    Value& operator=(number const& right);
+    Value& operator=(array const& right);
+    Value& operator=(object const& right);
+    Value& operator=(ObjectDefined const& right);
+
+    Value& operator=(Value &&);
+    Value& operator=(NoneValue && right);
+    Value& operator=(string && right);
+    Value& operator=(number && right);
+    Value& operator=(array && right);
+    Value& operator=(object && right);
+    Value& operator=(ObjectDefined && right);
 
     void pushValue(Value const& pushValue);
     bool addMember(Scope const& member);
