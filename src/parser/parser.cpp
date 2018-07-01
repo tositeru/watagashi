@@ -63,8 +63,12 @@ void parse(char const* source_, std::size_t length)
         case Value::Type::Array:
             cout << endl;
             for (auto& element : value.get<Value::array>()) {
-                cout << "  " << "Type is " << Value::toString(element.type)
-                    << ": " << element.toString() << endl;
+                cout << "  " << "Type is " << Value::toString(element.type);
+                if (Value::Type::String == element.type) {
+                    cout << ": '" << element.toString() << "'" << endl;
+                } else {
+                    cout << ": " << element.toString() << endl;
+                }
             }
             cout << endl;
             break;

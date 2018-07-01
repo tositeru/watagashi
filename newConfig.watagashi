@@ -20,7 +20,7 @@ str2 is Multiple line string
 str3 is \19203
 
 # number value
-num is 100
+num1 is 100
 num2 is 1.294
 num3 is 1.34e2
 
@@ -78,12 +78,12 @@ ref4 is ${array1}
 ref4_1 is ${0 in array1}
 ref5 is This "${ref1}" is string # ref5 = 'This "Apple is fruits" is string' #
 
-copy1 copy ${str1}
-copy2 copy ${num1}
-copy3 copy ${obj1}
-copy3 copy ${member1 in obj1}
-copy4 copy ${array1}
-copy5 copy ${0 in array1}
+copy1 copy str1
+copy2 copy num1
+copy3 copy obj1
+copy3 copy member1 in obj1
+copy4 copy array1
+copy5 copy 0 in array1
 
 ##
   Project setting example

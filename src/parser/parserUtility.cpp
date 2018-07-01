@@ -79,4 +79,17 @@ boost::string_view const toString(OperatorType type)
         : it->get_left();
 }
 
+double toDouble(std::string const& str, bool& isSuccess)
+{
+    char* tail;
+    auto num = strtod(str.c_str(), &tail);
+    isSuccess = true;
+    if (0 == num) {
+        bool isNumber = ('0' == str[0]);
+        isNumber |= (2 <= str.size() && ('-' == str[0] && '0' == str[1]));
+        isSuccess = isNumber;
+    }
+    return num;
+}
+
 }

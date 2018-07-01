@@ -173,8 +173,9 @@ public:
     bool operator()(Value::array& arr)const
     {
         auto& name = this->mMember.nestName.back();
-        int index = std::stoi(name);
-        if (0 <= index && index < arr.size()) {
+        bool isNumber = false;
+        auto index = static_cast<int>(toDouble(name, isNumber));
+        if (isNumber && 0 <= index && index < arr.size()) {
             arr[index] = this->mMember.value;
             return true;
         }
@@ -298,7 +299,11 @@ bool Value::isExsitChild(std::string const& name)const
     }
     case Value::Type::Array:
     {
-        int index = std::stoi(name);
+        bool isNumber = false;
+        auto index = static_cast<int>(toDouble(name, isNumber));
+        if (!isNumber) {
+            return false;
+        }
         auto& arr = this->get<Value::array>();
         return 0 <= index && index < arr.size();
     }
@@ -330,18 +335,20 @@ Value const& Value::getChild(std::string const& name, ErrorHandle& error)const
     }
     case Value::Type::Array:
     {
-        int index = -1;
-        try {
-            index = std::stoi(name);
-            auto& arr = this->get<Value::array>();
-            if (arr.size() <= index) {
-                throw std::invalid_argument("");
-            }
-            return arr[index];
-        } catch (std::invalid_argument& e) {
+
+        bool isNumber = false;
+        auto index = static_cast<int>(toDouble(name, isNumber));
+        if (!isNumber) {
+            error = MakeErrorHandle(0)
+                << "syntax error!! Use index(" << index << ") outside the array range. (array size=" << this->get<Value::array>().size() << ")";
+            return Value::none;
+        }
+        auto& arr = this->get<Value::array>();
+        if (arr.size() <= index) {
             error = MakeErrorHandle(0)
                 << "syntax error!! Use index(" << index << ") outside the array range. (array size=" << this->get<Value::array>().size() << ")";
         }
+        return arr[index];
     }
     default: break;
     }

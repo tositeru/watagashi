@@ -38,6 +38,8 @@ bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
 OperatorType toOperatorType(boost::string_view const& str);
 boost::string_view const toString(OperatorType type);
 
+double toDouble(std::string const& str, bool& isSuccess);
+
 class ErrorHandle
 {
 private:

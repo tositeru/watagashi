@@ -20,7 +20,7 @@ static CommentType evalComment(Enviroment& env, Line& line);
 static boost::optional<boost::string_view> pickupName(Line const& line, size_t start);
 static std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_t start);
 static OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start);
-static Value::Type parseValueType(Line const& line, size_t start, OperatorType opType);
+static ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, Enviroment& env, bool doGetParent = false);
 static ErrorHandle closeTopScope(Enviroment& env);
 static ErrorHandle parseValue(Enviroment& env, Line& valueLine);
 static size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
@@ -74,16 +74,34 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
                 << line.string_view() << endl;
             return;
         }
-
-        Value::Type valueType = parseValueType(line, p, opType);
-        env.pushScope(Scope(nestNames, Value().init(valueType)));
-
         // parse value
         p = line.skipSpace(p);
-        if (Value::Type::Array == env.currentScope().valueType()) {
+        if (OperatorType::Are == opType) {
+            env.pushScope(Scope(nestNames, Value().init(Value::Type::Array)));
             p = parseArrayElement(env, line, p);
-
+        } else if(OperatorType::Copy == opType) {
+            env.pushScope(Scope(nestNames, Value().init(Value::Type::None)));
+            decltype(p) tail = 0;
+            auto srcNestNameView = parseName(tail, line, p);
+            if (srcNestNameView.empty()) {
+                cerr << env.source.row() << ": syntax error!! found invalid character in source variable.\n"
+                    << line.string_view() << endl;
+                return;
+            }
+            std::list<std::string> srcNestName;
+            for (auto& view : srcNestNameView) {
+                srcNestName.push_back(view.to_string());
+            }
+            Value* pValue = nullptr;
+            auto error = searchValue(&pValue, srcNestName, env);
+            if (nullptr == pValue) {
+                cerr << env.source.row() << ": syntax error!! found reference variable.\n"
+                    << line.string_view() << endl;
+                return;
+            }
+            env.currentScope().value = *pValue;
         } else {
+            env.pushScope(Scope(nestNames, Value().init(Value::Type::None)));
             auto valueLine = Line(line.get(p), 0, line.length() - p);
             if (auto error = parseValue(env, valueLine)) {
                 cerr << error.message()
@@ -190,19 +208,12 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
 
     } else {
         auto str = valueLine.string_view().to_string();
-        char* tail;
-        auto num = strtod(str.c_str(), &tail);
-        if (0 == num) {
-            bool isNumber = ('0' == str[0]);
-            isNumber |= (2 <= str.size() && ('-' == str[0] && '0' == str[1]));
-
-            if (isNumber) {
-                env.currentScope().value = num;
-            } else {
-                env.currentScope().value = str;
-            }
-        } else {
+        bool isNumber = false;
+        auto num = toDouble(str, isNumber);
+        if (isNumber) {
             env.currentScope().value = num;
+        } else {
+            env.currentScope().value = str;
         }
     }
 
@@ -270,7 +281,9 @@ CommentType evalComment(Enviroment& env, Line& line)
         }
         if (count == KEYWARD_COUNT) {
             // remove space characters before comment.
-            p = line.skipSpace(p);
+            p = line.incrementPos(p, [](auto line, auto p) {
+                return isSpace(line.rget(p));
+            });
             line.resize(0, p);
         }
         return CommentType::EndOfLine;
@@ -399,13 +412,66 @@ OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
     return opType;
 }
 
-Value::Type parseValueType(Line const& line, size_t start, OperatorType opType)
+ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, Enviroment& env, bool doGetParent)
 {
-    if (opType == OperatorType::Are) {
-        return Value::Type::Array;
+    assert(ppOut != nullptr);
+    assert(!nestName.empty());
+
+    Value* pResult = nullptr;
+
+    // Find the starting point of the appropriate place.
+    auto rootName = nestName.front();
+    for (auto scopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != scopeIt; ++scopeIt) {
+        if (scopeIt->nestName.back() == rootName) {
+            pResult = &scopeIt->value;
+            break;
+        }
+        if (scopeIt->value.isExsitChild(rootName)) {
+            ErrorHandle error;
+            auto& childValue = scopeIt->value.getChild(rootName, error);
+            if (error) {
+                return ErrorHandle(env.source.row(), std::move(error));
+            }
+            pResult = &childValue;
+            break;
+        }
+    }
+    if (nullptr == pResult) {
+        return MakeErrorHandle(env.source.row())
+            << "scope searching error!! Don't found '" << rootName << "' in scope stack.";
     }
 
-    return Value::Type::String;
+    // Find a assignment destination at starting point.
+    if (2 <= nestName.size()) {
+        auto nestNameIt = ++nestName.begin();
+        auto endIt = nestName.end();
+        if (doGetParent) {
+            --endIt;
+        }
+
+        for (; endIt != nestNameIt; ++nestNameIt) {
+            ErrorHandle error;
+            auto& childValue = pResult->getChild(*nestNameIt, error);
+            if (error) {
+                if (Value::Type::Object == pResult->type) {
+                    auto it = nestName.begin();
+                    auto name = *it;
+                    for (++it; nestNameIt != it; ++it) {
+                        name = "." + (*it);
+                    }
+                    return MakeErrorHandle(env.source.row())
+                        << error.message() << "n"
+                        << "scope searching error!! Don't found '" << *nestNameIt << "' in '" << name << "'.";
+                } else {
+                    return ErrorHandle(env.source.row(), std::move(error));
+                }
+            }
+            pResult = &childValue;
+        }
+    }
+
+    *ppOut = pResult;
+    return {};
 }
 
 ErrorHandle closeTopScope(Enviroment& env)
@@ -419,49 +485,8 @@ ErrorHandle closeTopScope(Enviroment& env)
 
     Value* pParentValue = nullptr;
     if (2 <= currentScope.nestName.size()) {
-        // Find the starting point of the appropriate place.
-        auto rootName = currentScope.nestName.front();
-        for (auto scopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != scopeIt; ++scopeIt) {
-            if (scopeIt->nestName.back() == rootName) {
-                pParentValue = &scopeIt->value;
-                break;
-            }
-            if (scopeIt->value.isExsitChild(rootName)) {
-                ErrorHandle error;
-                auto& childValue = scopeIt->value.getChild(rootName, error);
-                if (error) {
-                    return ErrorHandle(env.source.row(), std::move(error));
-                }
-                pParentValue = &childValue;
-                break;
-            }
-        }
-        if (nullptr == pParentValue) {
-            return MakeErrorHandle(env.source.row())
-                << "scope searching error!! Don't found '"<< rootName << "' in scope stack.";
-        }
-
-        // Find a assignment destination at starting point.
-        auto nestNameIt = ++currentScope.nestName.begin();
-        auto endIt = --currentScope.nestName.end();
-        for (; endIt != nestNameIt; ++nestNameIt) {
-            ErrorHandle error;
-            auto& childValue = pParentValue->getChild(*nestNameIt, error);
-            if (error) {
-                if (Value::Type::Object == pParentValue->type) {
-                    auto it = currentScope.nestName.begin();
-                    auto name = *it;
-                    for (++it; nestNameIt != it; ++it) {
-                        name = "." + (*it);
-                    }
-                    return MakeErrorHandle(env.source.row())
-                        << error.message() << "n"
-                        << "scope searching error!! Don't found '" << *nestNameIt << "' in '" << name << "'.";
-                } else {
-                    return ErrorHandle(env.source.row(), std::move(error));
-                }
-            }
-            pParentValue = &childValue;
+        if (auto error = searchValue(&pParentValue, currentScope.nestName, env, true)) {
+            return error;
         }
     } else {
         pParentValue = &env.currentScope().value;
