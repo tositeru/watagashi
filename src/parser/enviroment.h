@@ -15,23 +15,25 @@ struct Enviroment
     Source source;
     Indent indent;
     std::vector<std::shared_ptr<IParseMode>> modeStack;
-    std::vector<Scope> scopeStack;
+    std::vector<std::shared_ptr<IScope>> scopeStack;
 
     explicit Enviroment(char const* source_, std::size_t length);
 
     void pushMode(std::shared_ptr<IParseMode> pMode);
     void popMode();
 
-    void pushScope(Scope && scope);
-    void pushScope(Scope const& scope);
+    void pushScope(std::shared_ptr<IScope> pScope);
+
     void popScope();
 
     std::shared_ptr<IParseMode> currentMode();
-    Scope& currentScope();
-    Scope const& currentScope() const;
+    IScope& currentScope();
+    IScope const& currentScope() const;
+    std::shared_ptr<IScope>& currentScopePointer();
+    std::shared_ptr<IScope> const& currentScopePointer() const;
     int compareIndentLevel(int level);
-    Scope& globalScope();
-    Scope const& globalScope()const;
+    IScope& globalScope();
+    IScope const& globalScope()const;
 };
 
 }

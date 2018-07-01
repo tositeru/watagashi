@@ -79,6 +79,15 @@ boost::string_view const toString(OperatorType type)
         : it->get_left();
 }
 
+std::list<std::string> toStringList(std::list<boost::string_view> const& list)
+{
+    std::list<std::string> result;
+    for (auto& view : list) {
+        result.push_back(view.to_string());
+    }
+    return result;
+}
+
 double toDouble(std::string const& str, bool& isSuccess)
 {
     char* tail;

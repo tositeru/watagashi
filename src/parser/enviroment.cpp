@@ -12,8 +12,10 @@ Enviroment::Enviroment(char const* source_, std::size_t length)
 {
     this->modeStack.push_back(std::make_shared<NormalParseMode>());
 
-    Scope initialScope(std::list<std::string>{ std::string("@@GLOBAL") }, Value().init(Value::Type::Object));
-    this->scopeStack.push_back(initialScope);
+    this->scopeStack.push_back( std::make_shared<NormalScope>(
+          std::list<std::string>{ std::string("@@GLOBAL") }
+        , Value().init(Value::Type::Object))
+    );
 }
 
 void Enviroment::pushMode(std::shared_ptr<IParseMode> pMode)
@@ -30,14 +32,9 @@ void Enviroment::popMode()
     this->modeStack.pop_back();
 }
 
-void Enviroment::pushScope(Scope && scope)
+void Enviroment::pushScope(std::shared_ptr<IScope> pScope)
 {
-    this->scopeStack.push_back(std::move(scope));
-}
-
-void Enviroment::pushScope(Scope const& scope)
-{
-    this->scopeStack.push_back(scope);
+    this->scopeStack.push_back(pScope);
 }
 
 void Enviroment::popScope()
@@ -53,12 +50,22 @@ std::shared_ptr<IParseMode> Enviroment::currentMode() {
     return this->modeStack.back();
 }
 
-Scope& Enviroment::currentScope()
+IScope& Enviroment::currentScope()
+{
+    return *this->scopeStack.back();
+}
+
+IScope const& Enviroment::currentScope() const
+{
+    return *this->scopeStack.back();
+}
+
+std::shared_ptr<IScope>& Enviroment::currentScopePointer()
 {
     return this->scopeStack.back();
 }
 
-Scope const& Enviroment::currentScope() const
+std::shared_ptr<IScope> const& Enviroment::currentScopePointer() const
 {
     return this->scopeStack.back();
 }
@@ -72,14 +79,14 @@ int Enviroment::compareIndentLevel(int level)
     return level < this->scopeStack.size() ? -1 : 1;
 }
 
-Scope& Enviroment::globalScope()
+IScope& Enviroment::globalScope()
 {
-    return *this->scopeStack.begin();
+    return **this->scopeStack.begin();
 }
 
-Scope const& Enviroment::globalScope()const
+IScope const& Enviroment::globalScope()const
 {
-    return *this->scopeStack.begin();
+    return **this->scopeStack.begin();
 }
 
 }

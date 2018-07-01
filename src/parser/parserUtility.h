@@ -2,7 +2,7 @@
 
 #include <sstream>
 #include <string>
-
+#include <list>
 #include <boost/utility/string_view.hpp>
 
 namespace parser
@@ -37,6 +37,7 @@ bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
 
 OperatorType toOperatorType(boost::string_view const& str);
 boost::string_view const toString(OperatorType type);
+std::list<std::string> toStringList(std::list<boost::string_view> const& list);
 
 double toDouble(std::string const& str, bool& isSuccess);
 

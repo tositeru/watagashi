@@ -53,7 +53,7 @@ void parse(char const* source_, std::size_t length)
         }
     }
 
-    auto& object = env.currentScope().value.get<Value::object>();
+    auto& object = env.currentScope().value().get<Value::object>();
     cout << "member count=" << object.size() << endl;
     for (auto& [name, value] : object) {
         cout << "Type of " << name << " is " << Value::toString(value.type) << ":";
@@ -65,7 +65,7 @@ void parse(char const* source_, std::size_t length)
             for (auto& element : value.get<Value::array>()) {
                 cout << "  " << "Type is " << Value::toString(element.type);
                 if (Value::Type::String == element.type) {
-                    cout << ": '" << element.toString() << "'" << endl;
+                    cout << ": '" << element.toString() << "'"<< endl;
                 } else {
                     cout << ": " << element.toString() << endl;
                 }
@@ -91,7 +91,7 @@ void parse(char const* source_, std::size_t length)
         }
     }
     ErrorHandle error;
-    auto& arr3 = env.currentScope().value.getChild("array3", error).get<Value::array>();
+    auto& arr3 = env.currentScope().value().getChild("array3", error).get<Value::array>();
     auto& elements = arr3.at(3).get<Value::array>();
     for (auto& e : elements) {
         cout << e.toString() << endl;

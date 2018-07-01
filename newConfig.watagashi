@@ -46,7 +46,7 @@ obj3 copy obj2
 ##
 array1 are Circle, Rectangle, # ["Circle", "Rectangle", 222, "321"] #
   222, \321
-# array1 push_back Tail ## only push back ##
+array1 push_back Tail ## only push back ##
 # array1 remove 0
 0 in array1 is Cone # Is "array1[0] is Cone" better than? #
 

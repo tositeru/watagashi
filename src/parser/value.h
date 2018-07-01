@@ -12,7 +12,7 @@ namespace parser
 
 class ErrorHandle;
 
-struct Scope;
+class IScope;
 
 struct ObjectDefined
 {
@@ -73,7 +73,7 @@ struct Value
     Value& operator=(ObjectDefined && right);
 
     void pushValue(Value const& pushValue);
-    bool addMember(Scope const& member);
+    bool addMember(IScope const& member);
     void appendStr(boost::string_view const& strView);
 
     std::string toString()const;

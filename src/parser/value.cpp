@@ -155,9 +155,9 @@ void Value::pushValue(Value const& pushValue)
 
 class AddMember : public boost::static_visitor<bool>
 {
-    Scope const& mMember;
+    IScope const& mMember;
 public:
-    AddMember(Scope const& member)
+    AddMember(IScope const& member)
         : mMember(member)
     {}
 
@@ -172,11 +172,11 @@ public:
     template<>
     bool operator()(Value::array& arr)const
     {
-        auto& name = this->mMember.nestName.back();
+        auto& name = this->mMember.nestName().back();
         bool isNumber = false;
         auto index = static_cast<int>(toDouble(name, isNumber));
         if (isNumber && 0 <= index && index < arr.size()) {
-            arr[index] = this->mMember.value;
+            arr[index] = this->mMember.value();
             return true;
         }
         return false;
@@ -185,19 +185,19 @@ public:
     template<>
     bool operator()(Value::object& obj)const
     {
-        auto& objName = this->mMember.nestName.back();
+        auto& objName = this->mMember.nestName().back();
         auto it = obj.find(objName);
         if (obj.end() == it) {
-            obj.insert({ objName, this->mMember.value });
+            obj.insert({ objName, this->mMember.value() });
         } else {
-            it->second = this->mMember.value;
+            it->second = this->mMember.value();
         }
         return true;
     }
 
 };
 
-bool Value::addMember(Scope const& member)
+bool Value::addMember(IScope const& member)
 {
     return boost::apply_visitor(AddMember(member), this->data);
 }

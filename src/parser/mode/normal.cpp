@@ -74,13 +74,14 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
                 << line.string_view() << endl;
             return;
         }
+
         // parse value
         p = line.skipSpace(p);
         if (OperatorType::Are == opType) {
-            env.pushScope(Scope(nestNames, Value().init(Value::Type::Array)));
+            env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::Array)));
             p = parseArrayElement(env, line, p);
-        } else if(OperatorType::Copy == opType) {
-            env.pushScope(Scope(nestNames, Value().init(Value::Type::None)));
+        } else if (OperatorType::Copy == opType) {
+            env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
             decltype(p) tail = 0;
             auto srcNestNameView = parseName(tail, line, p);
             if (srcNestNameView.empty()) {
@@ -88,20 +89,47 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
                     << line.string_view() << endl;
                 return;
             }
-            std::list<std::string> srcNestName;
-            for (auto& view : srcNestNameView) {
-                srcNestName.push_back(view.to_string());
-            }
+            std::list<std::string> srcNestName = toStringList(srcNestNameView);
             Value* pValue = nullptr;
-            auto error = searchValue(&pValue, srcNestName, env);
-            if (nullptr == pValue) {
-                cerr << env.source.row() << ": syntax error!! found reference variable.\n"
+            if (auto error = searchValue(&pValue, srcNestName, env)) {
+                cerr << error.message()
                     << line.string_view() << endl;
                 return;
             }
-            env.currentScope().value = *pValue;
+            env.currentScope().value() = *pValue;
+
+        } else if (OperatorType::PushBack == opType) {
+            // push reference scope
+            std::list<std::string> targetNestName = toStringList(nestNames);
+            Value* pValue = nullptr;
+            if (auto error = searchValue(&pValue, targetNestName, env)) {
+                cerr << error.message()
+                    << "syntax error!! Don't found the push_back target array.\n"
+                    << line.string_view() << endl;
+                return;
+            }
+            if (Value::Type::Array != pValue->type) {
+                ErrorHandle error = MakeErrorHandle(env.source.row()) << "syntax error!! An attempt was made to add with a value other than an array.";
+                cerr << error.message() << endl;
+                return;
+            }
+            env.pushScope(std::make_shared<ReferenceScope>(targetNestName, *pValue));
+
+            // push value scope of anonymous
+            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value().init(Value::Type::None)));
+            auto valueLine = Line(line.get(p), 0, line.length() - p);
+            if (auto error = parseValue(env, valueLine)) {
+                cerr << error.message()
+                    << line.string_view() << endl;
+                env.popScope();
+                return;
+            }
+
+        } else if (OperatorType::Remove == opType) {
+            //TODO?
+
         } else {
-            env.pushScope(Scope(nestNames, Value().init(Value::Type::None)));
+            env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
             auto valueLine = Line(line.get(p), 0, line.length() - p);
             if (auto error = parseValue(env, valueLine)) {
                 cerr << error.message()
@@ -121,13 +149,13 @@ void NormalParseMode::parse(Enviroment& env, Line& line)
         auto p = parseArrayElement(env, line, 0);
 
     } else if (Value::Type::String == env.currentScope().valueType()) {
-        env.currentScope().value.appendStr(line.string_view());
+        env.currentScope().value().appendStr(line.string_view());
 
     } else if (Value::Type::Number == env.currentScope().valueType()) {
         // Convert Number to String when scope is multiple line.
         auto str = Value().init(Value::Type::String);
-        str.data = std::to_string(env.currentScope().value.get<Value::number>());
-        env.currentScope().value = str;
+        str.data = std::to_string(env.currentScope().value().get<Value::number>());
+        env.currentScope().value() = str;
 
     } else {
         cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
@@ -158,7 +186,7 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
 
     do {
         auto valueLine = Line(line.get(valuePos), 0, tail - valuePos);
-        env.pushScope(Scope(std::list<std::string>{""}, Value()));
+        env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value()));
         if (auto error = parseValue(env, valueLine)) {
             cerr << error.message()
                 << line.string_view() << endl;
@@ -196,24 +224,24 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
 
         auto rawObjectName = valueLine.substr(1, p-1);
         if ("Array" == rawObjectName) {
-            env.currentScope().value.init(Value::Type::Array);
+            env.currentScope().value().init(Value::Type::Array);
             auto start = valueLine.skipSpace(p+1);
             parseArrayElement(env, valueLine,  start);
         } else {
-            env.currentScope().value.init(Value::Type::Object);
+            env.currentScope().value().init(Value::Type::Object);
         }
 
     } else if ('\\' == *valueLine.get(0)) {
-        env.currentScope().value = valueLine.substr(1, valueLine.length() - 1).to_string();
+        env.currentScope().value() = valueLine.substr(1, valueLine.length() - 1).to_string();
 
     } else {
         auto str = valueLine.string_view().to_string();
         bool isNumber = false;
         auto num = toDouble(str, isNumber);
         if (isNumber) {
-            env.currentScope().value = num;
+            env.currentScope().value() = num;
         } else {
-            env.currentScope().value = str;
+            env.currentScope().value() = str;
         }
     }
 
@@ -421,14 +449,14 @@ ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, E
 
     // Find the starting point of the appropriate place.
     auto rootName = nestName.front();
-    for (auto scopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != scopeIt; ++scopeIt) {
-        if (scopeIt->nestName.back() == rootName) {
-            pResult = &scopeIt->value;
+    for (auto pScopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != pScopeIt; ++pScopeIt) {
+        if ((*pScopeIt)->nestName().back() == rootName) {
+            pResult = &(*pScopeIt)->value();
             break;
         }
-        if (scopeIt->value.isExsitChild(rootName)) {
+        if ((*pScopeIt)->value().isExsitChild(rootName)) {
             ErrorHandle error;
-            auto& childValue = scopeIt->value.getChild(rootName, error);
+            auto& childValue = (*pScopeIt)->value().getChild(rootName, error);
             if (error) {
                 return ErrorHandle(env.source.row(), std::move(error));
             }
@@ -480,29 +508,32 @@ ErrorHandle closeTopScope(Enviroment& env)
     //  we assign values to appropriate places.
     // etc) object member, array element or other places.
 
-    Scope currentScope = env.currentScope();
+    auto pCurrentScope = env.currentScopePointer();
     env.popScope();
+    if (IScope::Type::Reference == pCurrentScope->type()) {
+        return {};
+    }
 
     Value* pParentValue = nullptr;
-    if (2 <= currentScope.nestName.size()) {
-        if (auto error = searchValue(&pParentValue, currentScope.nestName, env, true)) {
+    if (2 <= pCurrentScope->nestName().size()) {
+        if (auto error = searchValue(&pParentValue, pCurrentScope->nestName(), env, true)) {
             return error;
         }
     } else {
-        pParentValue = &env.currentScope().value;
+        pParentValue = &env.currentScope().value();
     }
 
     switch (pParentValue->type) {
     case Value::Type::Object:
-        if (!pParentValue->addMember(currentScope)) {
+        if (!pParentValue->addMember(*pCurrentScope)) {
             return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope object.";
         }
         break;
     case Value::Type::Array:
-        if ("" == currentScope.nestName.back()) {
-            pParentValue->pushValue(currentScope.value);
+        if ("" == pCurrentScope->nestName().back()) {
+            pParentValue->pushValue(pCurrentScope->value());
         } else {
-            if (!pParentValue->addMember(currentScope)) {
+            if (!pParentValue->addMember(*pCurrentScope)) {
                 return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope array because it was a index out of range.";
             }
         }
