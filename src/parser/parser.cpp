@@ -36,15 +36,17 @@ void parse(char const* source_, std::size_t length)
     Enviroment env(source_, length);
 
     while (!env.source.isEof()) {
-        auto rawLine = env.source.getLine(true);
+        auto rawLine = env.source.getLine(false);
         auto workLine = rawLine;
 
         // There is a possibility that The current mode may be discarded
         //   due to such reasons as mode switching.
         // For this reason, it holds the current mode as a local variable.
         auto pMode = env.currentMode();
-        pMode->parse(env, workLine);
-
+        auto result = pMode->parse(env, workLine);
+        if (IParseMode::Result::Next == result) {
+            env.source.goNextLine();
+        }
     }
 
     if (2 <= env.scopeStack.size()) {
@@ -54,8 +56,8 @@ void parse(char const* source_, std::size_t length)
     }
 
     auto& object = env.currentScope().value().get<Value::object>();
-    cout << "member count=" << object.size() << endl;
-    for (auto& [name, value] : object) {
+    cout << "member count=" << object.members.size() << endl;
+    for (auto& [name, value] : object.members) {
         cout << "Type of " << name << " is " << Value::toString(value.type) << ":";
         switch (value.type) {
         case Value::Type::String: cout << "'" << value.get<Value::string>() << "'" << endl; break;
@@ -74,7 +76,7 @@ void parse(char const* source_, std::size_t length)
             break;
         case Value::Type::Object:
             cout << endl;
-            for (auto& [childName, childValue] : value.get<Value::object>()) {
+            for (auto& [childName, childValue] : value.get<Value::object>().members) {
                 cout << "  " << "Type of " << childName << " is " << Value::toString(childValue.type) << ":";
                 switch (childValue.type) {
                 case Value::Type::String: cout << "'" << childValue.get<Value::string>() << "'" << endl; break;

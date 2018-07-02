@@ -85,6 +85,10 @@ copy3 copy member1 in obj1
 copy4 copy array1
 copy5 copy 0 in array1
 
+Project extend [Object]
+  type is string
+  releaseNumber is number by_default 0
+
 ##
   Project setting example
 ##

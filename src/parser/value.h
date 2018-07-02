@@ -11,16 +11,24 @@ namespace parser
 {
 
 class ErrorHandle;
-
 class IScope;
 
+struct NoneValue
+{};
+
+struct MemberDefined;
 struct ObjectDefined
 {
-    // TODO 
+    std::unordered_map<std::string, MemberDefined> members;
 };
 
-struct NoneValue
+struct Value;
+struct Object
 {
+    std::unordered_map<std::string, Value> members;
+    ObjectDefined const* pDefined;
+
+    Object(ObjectDefined const* pDefined);
 };
 
 struct Value
@@ -37,9 +45,10 @@ struct Value
     using string = std::string;
     using number = double;
     using array = std::vector<Value>;
-    using object = std::unordered_map<std::string, Value>;
+    using object = Object;
 
     static Value const none;
+    static ObjectDefined const baseObject;
     static boost::string_view toString(Type type);
 
     Type type;
@@ -91,6 +100,12 @@ struct Value
 
     Value& getChild(std::string const& name, ErrorHandle& error);
     Value const& getChild(std::string const& name, ErrorHandle& error)const;
+};
+
+struct MemberDefined
+{
+    Value::Type type;
+    Value defaultValue;
 };
 
 }

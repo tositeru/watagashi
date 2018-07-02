@@ -9,8 +9,23 @@
 
 namespace parser
 {
+//-----------------------------------------------------------------------
+//
+//  struct Object
+//
+//-----------------------------------------------------------------------
+Object::Object(ObjectDefined const* pDefined)
+    : pDefined(pDefined)
+{
+}
 
+//-----------------------------------------------------------------------
+//
+//  struct Value
+//
+//-----------------------------------------------------------------------
 Value const Value::none = Value().init(Value::Type::None);
+ObjectDefined const Value::baseObject;
 
 Value& Value::init(Type type_)
 {
@@ -19,7 +34,7 @@ Value& Value::init(Type type_)
     case Type::String: this->data = ""; break;
     case Type::Number: this->data = 0.0; break;
     case Type::Array:  this->data = array{}; break;
-    case Type::Object: this->data = object{}; break;
+    case Type::Object: this->data = object(&Value::baseObject); break;
     case Type::ObjectDefined: this->data = ObjectDefined{}; break;
     }
     this->type = type_;
@@ -186,9 +201,9 @@ public:
     bool operator()(Value::object& obj)const
     {
         auto& objName = this->mMember.nestName().back();
-        auto it = obj.find(objName);
-        if (obj.end() == it) {
-            obj.insert({ objName, this->mMember.value() });
+        auto it = obj.members.find(objName);
+        if (obj.members.end() == it) {
+            obj.members.insert({ objName, this->mMember.value() });
         } else {
             it->second = this->mMember.value();
         }
@@ -251,7 +266,7 @@ boost::string_view Value::toString(Type type)
 class ToString : public boost::static_visitor<std::string>
 {
 public:
-    std::string operator()(NoneValue const& none)const
+    std::string operator()(NoneValue const&)const
     {
         return "[None]";
     }
@@ -273,12 +288,12 @@ public:
 
     std::string operator()(Value::object const& obj)const
     {
-        return "[Object](" + std::to_string(obj.size()) + ")";
+        return "[Object](" + std::to_string(obj.members.size()) + ")";
     }
 
     std::string operator()(ObjectDefined const& objDefined)const
     {
-        return "[ObjectDefined]";
+        return "[ObjectDefined](" + std::to_string(objDefined.members.size()) + ")";
     }
 
 };
@@ -294,8 +309,8 @@ bool Value::isExsitChild(std::string const& name)const
     case Value::Type::Object:
     {
         auto& obj = this->get<Value::object>();
-        auto it = obj.find(name);
-        return obj.end() != it;
+        auto it = obj.members.find(name);
+        return obj.members.end() != it;
     }
     case Value::Type::Array:
     {
@@ -325,8 +340,8 @@ Value const& Value::getChild(std::string const& name, ErrorHandle& error)const
     case Value::Type::Object:
     {
         auto& obj = this->get<Value::object>();
-        auto it = obj.find(name);
-        if (obj.end() == it) {
+        auto it = obj.members.find(name);
+        if (obj.members.end() == it) {
             error = MakeErrorHandle(0)
                 <<"syntax error!! Don't found '" << name << "' child.";
             break;

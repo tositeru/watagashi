@@ -9,7 +9,7 @@ class MultiLineCommentParseMode final : public IParseMode
 {
 public:
     MultiLineCommentParseMode(int keywardCount);
-    void parse(Enviroment& parser, Line& line)override;
+    Result parse(Enviroment& parser, Line& line)override;
 
 private:
     int mKeywardCount;

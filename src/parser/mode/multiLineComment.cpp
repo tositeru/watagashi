@@ -11,7 +11,7 @@ MultiLineCommentParseMode::MultiLineCommentParseMode(int keywardCount)
     : mKeywardCount(keywardCount)
 {}
 
-void MultiLineCommentParseMode::parse(Enviroment& parser, Line& line)
+IParseMode::Result MultiLineCommentParseMode::parse(Enviroment& parser, Line& line)
 {
     size_t count = 0;
     size_t p = 0;
@@ -25,6 +25,7 @@ void MultiLineCommentParseMode::parse(Enviroment& parser, Line& line)
     if (count == this->mKeywardCount) {
         parser.popMode();
     }
+    return Result::Next;
 }
 
 }
