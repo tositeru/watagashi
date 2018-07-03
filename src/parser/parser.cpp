@@ -35,17 +35,22 @@ void parse(char const* source_, std::size_t length)
 {
     Enviroment env(source_, length);
 
+    bool isGetLine = true;
+    Line line(nullptr, 0, 0);
     while (!env.source.isEof()) {
-        auto rawLine = env.source.getLine(false);
-        auto workLine = rawLine;
+        if(isGetLine) {
+            line = env.source.getLine(true);
+        }
+        isGetLine = true;
+        auto workLine = line;
 
         // There is a possibility that The current mode may be discarded
         //   due to such reasons as mode switching.
         // For this reason, it holds the current mode as a local variable.
         auto pMode = env.currentMode();
         auto result = pMode->parse(env, workLine);
-        if (IParseMode::Result::Next == result) {
-            env.source.goNextLine();
+        if (IParseMode::Result::Redo == result) {
+            isGetLine = false;
         }
     }
 
