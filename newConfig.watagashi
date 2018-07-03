@@ -89,6 +89,9 @@ Project extend [Object]
   type is string
   releaseNumber is number by_default 0
 
+Project2 extend [Project]
+  hoge is number
+
 ##
   Project setting example
 ##

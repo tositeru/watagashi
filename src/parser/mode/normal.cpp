@@ -121,13 +121,23 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
 
         } else if(OperatorType::Extend == opType) {
             auto objectNameLine = Line(line.get(p), 0, line.length() - p);
-            boost::string_view rawObjectName;
-            if (auto error = parseObjectName(rawObjectName, p, env, objectNameLine, 0)) {
+            std::list<boost::string_view> objectNestName;
+            if (auto error = parseObjectName(objectNestName, p, env, line, p)) {
                 cerr << error.message()
                     << line.string_view() << endl;
                 return Result::Next;
             }
-            env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::ObjectDefined)));
+            //TODO seach Objectdefined from env and set it to new scope 
+            ObjectDefined const* pObjectDefined = nullptr;
+            if (auto error = searchObjdectDefined(&pObjectDefined, objectNestName, env)) {
+                cerr << error.message()
+                    << line.string_view() << endl;
+                return Result::Next;
+            }
+
+            Value objDefiend;
+            objDefiend = *pObjectDefined;
+            env.pushScope(std::make_shared<NormalScope>(nestNames, std::move(objDefiend)));
             env.pushMode(std::make_shared<ObjectDefinedParseMode>());
 
         } else {

@@ -25,6 +25,7 @@ struct ObjectDefined
 struct Value;
 struct Object
 {
+
     std::unordered_map<std::string, Value> members;
     ObjectDefined const* pDefined;
 
@@ -50,6 +51,7 @@ struct Value
     using object = Object;
 
     static Value const none;
+    static ObjectDefined const arrayDefined; // dummy objectDefined
     static ObjectDefined const baseObject;
     static boost::string_view toString(Type type);
     static Type toType(boost::string_view const& str);

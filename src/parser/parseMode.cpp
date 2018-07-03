@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include <boost/range/adaptor/reversed.hpp>
+
 #include "enviroment.h"
 #include "line.h"
 #include "parserUtility.h"
@@ -188,7 +190,7 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
     return valuePos;
 }
 
-ErrorHandle parseObjectName(boost::string_view& out, size_t& outTail, Enviroment& env, Line& line, size_t start)
+ErrorHandle parseObjectName(std::list<boost::string_view>& out, size_t& outEnd, Enviroment& env, Line& line, size_t start)
 {
     auto nameLine = Line(line.get(start), 0, line.length() - start);
     if ('[' != *nameLine.get(0)) {
@@ -203,8 +205,44 @@ ErrorHandle parseObjectName(boost::string_view& out, size_t& outTail, Enviroment
             << env.source.row() << ": syntax error!! The object name is not encloded in square brackets([...]).\n";
     }
 
-    out = nameLine.substr(1, p - 1);
-    outTail = p;
+    nameLine.resize(1, nameLine.length()-p);
+    size_t endPos = 0;
+    auto nestName = parseName(endPos, nameLine, 0);
+    out = std::move(nestName);
+    outEnd = endPos+1 + start;
+    return {};
+}
+
+ErrorHandle searchObjdectDefined(ObjectDefined const** ppOut, std::list<boost::string_view> const& nestName, Enviroment const& env)
+{
+    if (1 == nestName.size()) {
+        if ("Array" == *nestName.begin()) {
+            *ppOut = &Value::arrayDefined;
+            return {};
+        } else if ("Object" == *nestName.begin()) {
+            *ppOut = &Value::baseObject;
+            return {};
+        }
+    }
+
+    Value const* pValue = &env.globalScope().value();
+    for (auto&& name : nestName) {
+        ErrorHandle error;
+        Value const* pChild = &pValue->getChild(name.to_string(), error);
+        if (error) {
+            return error;
+        }
+        pValue = pChild;
+    }
+    if (nullptr == pValue) {
+        return MakeErrorHandle(env.source.row())
+            << "scope searching error: Don't found ObjectDefined.\n";
+    }
+    if (Value::Type::ObjectDefined != pValue->type) {
+        return MakeErrorHandle(env.source.row())
+            << "scope searching error: Value is not ObjectDefined.\n";
+    }
+    *ppOut = &pValue->get<ObjectDefined>();
     return {};
 }
 
@@ -213,18 +251,23 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
     auto start = valueLine.skipSpace(0);
     valueLine.resize(start, 0);
     if ('[' == *valueLine.get(0)) {
-        boost::string_view rawObjectName;
-        size_t p=0;
-        if (auto error = parseObjectName(rawObjectName, p, env, valueLine, 0)) {
+        size_t p = 0;
+        std::list<boost::string_view> objectNestName;
+        if (auto error = parseObjectName(objectNestName, p, env, valueLine, 0)) {
             return error;
         }
-
-        if ("Array" == rawObjectName) {
+        ObjectDefined const* pObjectDefined = nullptr;
+        if (auto error = searchObjdectDefined(&pObjectDefined, objectNestName, env)) {
+            return error;
+        }
+        if (&Value::arrayDefined == pObjectDefined) {
             env.currentScope().value().init(Value::Type::Array);
             auto startArrayElement = valueLine.skipSpace(p + 1);
             parseArrayElement(env, valueLine, startArrayElement);
-        } else {
+        } else if(&Value::baseObject == pObjectDefined) {
             env.currentScope().value().init(Value::Type::Object);
+        } else {
+            env.currentScope().value() = Object(pObjectDefined);
         }
 
     } else if ('\\' == *valueLine.get(0)) {
@@ -374,14 +417,14 @@ ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, E
 
     // Find the starting point of the appropriate place.
     auto rootName = nestName.front();
-    for (auto pScopeIt = env.scopeStack.rbegin(); env.scopeStack.rend() != pScopeIt; ++pScopeIt) {
-        if ((*pScopeIt)->nestName().back() == rootName) {
-            pResult = &(*pScopeIt)->value();
+    for (auto&& pScope : boost::adaptors::reverse(env.scopeStack)) {
+        if (pScope->nestName().back() == rootName) {
+            pResult = &pScope->value();
             break;
         }
-        if ((*pScopeIt)->value().isExsitChild(rootName)) {
+        if (pScope->value().isExsitChild(rootName)) {
             ErrorHandle error;
-            auto& childValue = (*pScopeIt)->value().getChild(rootName, error);
+            auto& childValue = pScope->value().getChild(rootName, error);
             if (error) {
                 return ErrorHandle(env.source.row(), std::move(error));
             }
@@ -401,7 +444,6 @@ ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, E
         if (doGetParent) {
             --endIt;
         }
-
         for (; endIt != nestNameIt; ++nestNameIt) {
             ErrorHandle error;
             auto& childValue = pResult->getChild(*nestNameIt, error);

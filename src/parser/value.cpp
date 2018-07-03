@@ -25,6 +25,7 @@ Object::Object(ObjectDefined const* pDefined)
 //
 //-----------------------------------------------------------------------
 Value const Value::none = Value().init(Value::Type::None);
+ObjectDefined const Value::arrayDefined;
 ObjectDefined const Value::baseObject;
 
 Value::Value()
