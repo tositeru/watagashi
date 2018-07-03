@@ -156,7 +156,7 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
     } else if (Value::Type::Number == env.currentScope().valueType()) {
         // Convert Number to String when scope is multiple line.
         auto str = Value().init(Value::Type::String);
-        str.data = std::to_string(env.currentScope().value().get<Value::number>());
+        str = std::to_string(env.currentScope().value().get<Value::number>());
         env.currentScope().value() = str;
 
     } else {

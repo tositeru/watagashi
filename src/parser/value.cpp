@@ -27,115 +27,150 @@ Object::Object(ObjectDefined const* pDefined)
 Value const Value::none = Value().init(Value::Type::None);
 ObjectDefined const Value::baseObject;
 
+Value::Value()
+    : type(Type::None)
+    , pData(std::make_unique<InnerData>())
+{
+    this->pData->data = NoneValue();
+}
+
+Value::~Value()
+{}
+
+Value::Value(Value const& right)
+    : type(right.type)
+    , pData(std::make_unique<InnerData>(*right.pData))
+{}
+
+Value::Value(Value && right)
+    : type(right.type)
+    , pData(std::move(right.pData))
+{}
+
+Value& Value::operator=(Value const& right)
+{
+    Value tmp(right);
+    *this = std::move(tmp);
+    return *this;
+}
+
+Value& Value::operator=(Value &&right)
+{
+    this->type = right.type;
+    this->pData = std::move(right.pData);
+    return *this;
+}
+
 Value& Value::init(Type type_)
 {
     switch (type_) {
-    case Type::None:   this->data = Value::none.data; break;
-    case Type::String: this->data = ""; break;
-    case Type::Number: this->data = 0.0; break;
-    case Type::Array:  this->data = array{}; break;
-    case Type::Object: this->data = object(&Value::baseObject); break;
-    case Type::ObjectDefined: this->data = ObjectDefined{}; break;
+    case Type::None:   this->pData->data = NoneValue(); break;
+    case Type::String: this->pData->data = ""; break;
+    case Type::Number: this->pData->data = 0.0; break;
+    case Type::Array:  this->pData->data = array{}; break;
+    case Type::Object: this->pData->data = object(&Value::baseObject); break;
+    case Type::ObjectDefined: this->pData->data = ObjectDefined{}; break;
+    case Type::MemberDefined: this->pData->data = MemberDefined{}; break;
     }
     this->type = type_;
     return *this;
 }
 
-Value& Value::operator=(Value const& right)
-{
-    this->data = right.data;
-    this->type = right.type;
-    return *this;
-}
-
 Value& Value::operator=(NoneValue const& right)
 {
-    this->data = right;
+    this->pData->data = right;
     this->type = Type::None;
     return *this;
 }
 
 Value& Value::operator=(string const& right)
 {
-    this->data = right;
+    this->pData->data = right;
     this->type = Type::String;
     return *this;
 }
 
 Value& Value::operator=(number const& right)
 {
-    this->data = right;
+    this->pData->data = right;
     this->type = Type::Number;
     return *this;
 }
 
 Value& Value::operator=(array const& right)
 {
-    this->data = right;
+    this->pData->data = right;
     this->type = Type::Array;
     return *this;
 }
 
 Value& Value::operator=(object const& right)
 {
-    this->data = right;
+    this->pData->data = right;
     this->type = Type::Object;
     return *this;
 }
 
 Value& Value::operator=(ObjectDefined const& right)
 {
-    this->data = right;
+    this->pData->data = right;
     this->type = Type::ObjectDefined;
     return *this;
 }
 
-Value& Value::operator=(Value && right)
+Value& Value::operator=(MemberDefined const& right)
 {
-    this->data = std::move(right.data);
-    this->type = right.type;
+    this->pData->data = right;
+    this->type = Type::MemberDefined;
     return *this;
 }
 
 Value& Value::operator=(NoneValue && right)
 {
-    this->data = std::move(right);
+    this->pData->data = std::move(right);
     this->type = Type::None;
     return *this;
 }
 
 Value& Value::operator=(string && right)
 {
-    this->data = std::move(right);
+    this->pData->data = std::move(right);
     this->type = Type::String;
     return *this;
 }
 
 Value& Value::operator=(number && right)
 {
-    this->data = std::move(right);
+    this->pData->data = std::move(right);
     this->type = Type::Number;
     return *this;
 }
 
 Value& Value::operator=(array && right)
 {
-    this->data = std::move(right);
+    this->pData->data = std::move(right);
     this->type = Type::Array;
     return *this;
 }
 
 Value& Value::operator=(object && right)
 {
-    this->data = std::move(right);
+    this->pData->data = std::move(right);
     this->type = Type::Object;
     return *this;
 }
 
 Value& Value::operator=(ObjectDefined && right)
 {
-    this->data = std::move(right);
+    this->pData->data = std::move(right);
     this->type = Type::ObjectDefined;
+    return *this;
+}
+
+Value& Value::operator=(MemberDefined && right)
+{
+    this->pData->data = std::move(right);
+    this->type = Type::MemberDefined;
     return *this;
 }
 
@@ -165,7 +200,7 @@ public:
 
 void Value::pushValue(Value const& pushValue)
 {
-    boost::apply_visitor(PushValue(pushValue), this->data);
+    boost::apply_visitor(PushValue(pushValue), this->pData->data);
 }
 
 class AddMember : public boost::static_visitor<bool>
@@ -210,11 +245,24 @@ public:
         return true;
     }
 
+    template<>
+    bool operator()(ObjectDefined& obj)const
+    {
+        auto& objName = this->mMember.nestName().back();
+        auto it = obj.members.find(objName);
+        if (obj.members.end() == it) {
+            obj.members.insert({ objName, this->mMember.value().get<MemberDefined>() });
+        } else {
+            it->second = this->mMember.value().get<MemberDefined>();
+        }
+        return true;
+    }
+
 };
 
 bool Value::addMember(IScope const& member)
 {
-    return boost::apply_visitor(AddMember(member), this->data);
+    return boost::apply_visitor(AddMember(member), this->pData->data);
 }
 
 class AppendString : public boost::static_visitor<void>
@@ -242,7 +290,7 @@ public:
 
 void Value::appendStr(boost::string_view const& strView)
 {
-    boost::apply_visitor(AppendString(strView), this->data);
+    boost::apply_visitor(AppendString(strView), this->pData->data);
 }
 
 using ValueTypeBimap = boost::bimap<boost::string_view, Value::Type>;
@@ -261,6 +309,14 @@ boost::string_view Value::toString(Type type)
     return valueTypeBimap.right.end() == it
         ? UNKNOWN
         : it->get_left();
+}
+
+Value::Type Value::toType(boost::string_view const& str)
+{
+    auto it = valueTypeBimap.left.find(str);
+    return valueTypeBimap.left.end() == it
+        ? Type::None
+        : it->get_right();
 }
 
 class ToString : public boost::static_visitor<std::string>
@@ -296,11 +352,16 @@ public:
         return "[ObjectDefined](" + std::to_string(objDefined.members.size()) + ")";
     }
 
+    std::string operator()(MemberDefined const& memberDefined)const
+    {
+        return "[ObjectDefined](" + Value::toString(memberDefined.type).to_string() + ")";
+    }
+
 };
 
 std::string Value::toString()const
 {
-    return boost::apply_visitor(ToString(), this->data);
+    return boost::apply_visitor(ToString(), this->pData->data);
 }
 
 bool Value::isExsitChild(std::string const& name)const

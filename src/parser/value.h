@@ -41,7 +41,9 @@ struct Value
         Array,
         Object,
         ObjectDefined,
+        MemberDefined,
     };
+
     using string = std::string;
     using number = double;
     using array = std::vector<Value>;
@@ -50,36 +52,36 @@ struct Value
     static Value const none;
     static ObjectDefined const baseObject;
     static boost::string_view toString(Type type);
+    static Type toType(boost::string_view const& str);
 
     Type type;
-    boost::variant<
-        NoneValue,
-        string,
-        number,
-        array,
-        object,
-        ObjectDefined> data;
+    struct InnerData;
+    std::unique_ptr<InnerData> pData;
 
-    Value() = default;
-    Value(Value const&) = default;
-    Value(Value &&) = default;
+    Value();
+    Value(Value const& right);
+    Value(Value &&right);
+    Value& operator=(Value const& right);
+    Value& operator=(Value &&right);
+    ~Value();
+
     Value& init(Type type_);
 
-    Value& operator=(Value const&);
     Value& operator=(NoneValue const& right);
     Value& operator=(string const& right);
     Value& operator=(number const& right);
     Value& operator=(array const& right);
     Value& operator=(object const& right);
     Value& operator=(ObjectDefined const& right);
+    Value& operator=(MemberDefined const& right);
 
-    Value& operator=(Value &&);
     Value& operator=(NoneValue && right);
     Value& operator=(string && right);
     Value& operator=(number && right);
     Value& operator=(array && right);
     Value& operator=(object && right);
     Value& operator=(ObjectDefined && right);
+    Value& operator=(MemberDefined && right);
 
     void pushValue(Value const& pushValue);
     bool addMember(IScope const& member);
@@ -89,11 +91,11 @@ struct Value
 
     template<typename T> T& get()
     {
-        return boost::get<T>(this->data);
+        return boost::get<T>(this->pData->data);
     }
 
     template<typename T> T const& get()const {
-        return boost::get<T>(this->data);
+        return boost::get<T>(this->pData->data);
     }
 
     bool isExsitChild(std::string const& name)const;
@@ -106,6 +108,18 @@ struct MemberDefined
 {
     Value::Type type;
     Value defaultValue;
+};
+
+struct Value::InnerData
+{
+    boost::variant<
+        NoneValue,
+        string,
+        number,
+        array,
+        object,
+        ObjectDefined,
+        MemberDefined> data;
 };
 
 }

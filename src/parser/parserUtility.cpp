@@ -79,6 +79,27 @@ boost::string_view const toString(OperatorType type)
         : it->get_left();
 }
 
+using MemberDefinedOperationBimap = boost::bimap<boost::string_view, MemberDefinedOperatorType>;
+static const MemberDefinedOperationBimap memberDefinedOperationBimap = boost::assign::list_of<MemberDefinedOperationBimap::relation>
+    ("by_default", MemberDefinedOperatorType::ByDefault);
+
+MemberDefinedOperatorType toMemberDefinedOperatorType(boost::string_view const& str)
+{
+    auto it = memberDefinedOperationBimap.left.find(str);
+    return memberDefinedOperationBimap.left.end() == it
+        ? MemberDefinedOperatorType::Unknown
+        : it->get_right();
+}
+
+boost::string_view const toString(MemberDefinedOperatorType type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = memberDefinedOperationBimap.right.find(type);
+    return memberDefinedOperationBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
+
 std::list<std::string> toStringList(std::list<boost::string_view> const& list)
 {
     std::list<std::string> result;

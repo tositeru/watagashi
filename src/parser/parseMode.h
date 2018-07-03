@@ -7,6 +7,7 @@
 #include <boost/optional.hpp>
 
 #include "parserUtility.h"
+#include "value.h"
 
 namespace parser
 {
@@ -39,5 +40,8 @@ ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, E
 ErrorHandle parseValue(Enviroment& env, Line& valueLine);
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
 ErrorHandle parseObjectName(boost::string_view& out, size_t& outTail, Enviroment& env, Line& line, size_t start);
+Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos);
+MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line const& line, size_t start);
+
 
 }

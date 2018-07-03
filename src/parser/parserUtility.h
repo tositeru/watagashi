@@ -8,6 +8,9 @@
 namespace parser
 {
 
+std::list<std::string> toStringList(std::list<boost::string_view> const& list);
+double toDouble(std::string const& str, bool& isSuccess);
+
 enum class CommentType
 {
     None,
@@ -15,6 +18,7 @@ enum class CommentType
     MultiLine,
     EndOfLine,
 };
+bool isCommentChar(char const* c);
 
 enum class OperatorType
 {
@@ -26,20 +30,24 @@ enum class OperatorType
     PushBack,
     Remove,
 };
+OperatorType toOperatorType(boost::string_view const& str);
+boost::string_view const toString(OperatorType type);
 
-bool isCommentChar(char const* c);
+enum class MemberDefinedOperatorType
+{
+    Unknown,
+    ByDefault,
+};
+
+MemberDefinedOperatorType toMemberDefinedOperatorType(boost::string_view const& str);
+boost::string_view const toString(MemberDefinedOperatorType type);
+
 bool isSpace(char const* c);
 bool isNameChar(char const* c);
 bool isParentOrderAccessorChar(char const* c);
 bool isChildOrderAccessorString(boost::string_view const& str);
 bool isArrayElementSeparater(char const* c);
 bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
-
-OperatorType toOperatorType(boost::string_view const& str);
-boost::string_view const toString(OperatorType type);
-std::list<std::string> toStringList(std::list<boost::string_view> const& list);
-
-double toDouble(std::string const& str, bool& isSuccess);
 
 class ErrorHandle
 {

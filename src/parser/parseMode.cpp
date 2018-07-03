@@ -123,6 +123,17 @@ ErrorHandle closeTopScope(Enviroment& env)
             }
         }
         break;
+    case Value::Type::ObjectDefined:
+        if (!pParentValue->addMember(*pCurrentScope)) {
+            return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope object.";
+        }
+        break;
+    case Value::Type::MemberDefined:
+    {
+        auto& memberDefined = pParentValue->get<MemberDefined>();
+        memberDefined.defaultValue = pCurrentScope->value();
+        break;
+    }
     default:
         return MakeErrorHandle(env.source.row()) << "syntax error!! The current value can not have children.";
     }
@@ -414,6 +425,27 @@ ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, E
 
     *ppOut = pResult;
     return {};
+}
+
+Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
+{
+    auto p = line.skipSpace(inOutPos);
+    auto end = line.incrementPos(p, [](auto line, auto p) {
+        return isNameChar(line.get(p));
+    });
+    auto typeStrView = line.substr(p, end - p);
+    auto type = Value::toType(typeStrView);
+    inOutPos = end;
+    return type;
+}
+
+MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line const& line, size_t start)
+{
+    start = line.skipSpace(start);
+    auto p = line.incrementPos(start, [](auto line, auto p) { return !isSpace(line.get(p)); });
+    auto opType = toMemberDefinedOperatorType(line.substr(start, p - start));
+    outTailPos = p;
+    return opType;
 }
 
 }

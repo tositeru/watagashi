@@ -87,6 +87,16 @@ void parse(char const* source_, std::size_t length)
             }
             cout << endl;
             break;
+        case Value::Type::ObjectDefined:
+            cout << endl;
+            for (auto&[childName, childValue] : value.get<ObjectDefined>().members) {
+                cout << "  " << "Member Type of " << childName << " is " << Value::toString(childValue.type);
+                if (Value::Type::None != childValue.defaultValue.type) {
+                    cout << " by default=" << childValue.defaultValue.toString();
+                }
+                cout << endl;
+            }
+            break;
         default:
             cout << "(unknown)" << endl;
             break;
