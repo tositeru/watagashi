@@ -38,12 +38,29 @@ ErrorHandle Object::applyObjectDefined()
 
 //-----------------------------------------------------------------------
 //
+//  struct MemberDefined
+//
+//-----------------------------------------------------------------------
+
+MemberDefined::MemberDefined(Value::Type type, Value const& defaultValue)
+    : type(type)
+    , defaultValue(defaultValue)
+{}
+
+MemberDefined::MemberDefined(Value::Type type, Value && defaultValue)
+    : type(type)
+    , defaultValue(std::move(defaultValue))
+{}
+
+//-----------------------------------------------------------------------
+//
 //  struct Value
 //
 //-----------------------------------------------------------------------
 Value const Value::none = Value().init(Value::Type::None);
+Value const Value::emptyStr = Value::string();
 ObjectDefined const Value::arrayDefined;
-ObjectDefined const Value::baseObject;
+ObjectDefined const Value::objectDefined;
 
 Value::Value()
     : type(Type::None)
@@ -86,7 +103,7 @@ Value& Value::init(Type type_)
     case Type::String: this->pData->data = ""; break;
     case Type::Number: this->pData->data = 0.0; break;
     case Type::Array:  this->pData->data = array{}; break;
-    case Type::Object: this->pData->data = object(&Value::baseObject); break;
+    case Type::Object: this->pData->data = object(&Value::objectDefined); break;
     case Type::ObjectDefined: this->pData->data = ObjectDefined{}; break;
     case Type::MemberDefined: this->pData->data = MemberDefined{}; break;
     }
@@ -223,10 +240,17 @@ void Value::pushValue(Value const& pushValue)
 
 class AddMember : public boost::static_visitor<bool>
 {
-    IScope const& mMember;
+    std::string const& mName;
+    Value const& mValue;
+
 public:
     AddMember(IScope const& member)
-        : mMember(member)
+        : mName(member.nestName().back())
+        , mValue(member.value())
+    {}
+    AddMember(std::string const& name, Value const& value)
+        : mName(name)
+        , mValue(value)
     {}
 
     template<typename T>
@@ -240,11 +264,11 @@ public:
     template<>
     bool operator()(Value::array& arr)const
     {
-        auto& name = this->mMember.nestName().back();
+        auto& name = this->mName;
         bool isNumber = false;
         auto index = static_cast<int>(toDouble(name, isNumber));
         if (isNumber && 0 <= index && index < arr.size()) {
-            arr[index] = this->mMember.value();
+            arr[index] = this->mValue;
             return true;
         }
         return false;
@@ -253,12 +277,12 @@ public:
     template<>
     bool operator()(Value::object& obj)const
     {
-        auto& objName = this->mMember.nestName().back();
+        auto& objName = this->mName;
         auto it = obj.members.find(objName);
         if (obj.members.end() == it) {
-            obj.members.insert({ objName, this->mMember.value() });
+            obj.members.insert({ objName, this->mValue });
         } else {
-            it->second = this->mMember.value();
+            it->second = this->mValue;
         }
         return true;
     }
@@ -266,13 +290,13 @@ public:
     template<>
     bool operator()(ObjectDefined& obj)const
     {
-        auto& objName = this->mMember.nestName().back();
+        auto& objName = this->mName;
         auto it = obj.members.find(objName);
         if (obj.members.end() == it) {
-            auto defined = this->mMember.value().get<MemberDefined>();
+            auto defined = this->mValue.get<MemberDefined>();
             obj.members.insert({ objName,  defined });
         } else {
-            it->second = this->mMember.value().get<MemberDefined>();
+            it->second = this->mValue.get<MemberDefined>();
         }
         return true;
     }
@@ -282,6 +306,11 @@ public:
 bool Value::addMember(IScope const& member)
 {
     return boost::apply_visitor(AddMember(member), this->pData->data);
+}
+
+bool Value::addMember(std::string const& name, Value const& value)
+{
+    return boost::apply_visitor(AddMember(name, value), this->pData->data);
 }
 
 class AppendString : public boost::static_visitor<void>

@@ -129,6 +129,7 @@ ErrorHandle closeTopScope(Enviroment& env)
         if (!pParentValue->addMember(*pCurrentScope)) {
             return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope object.";
         }
+
         break;
     case Value::Type::Array:
         if ("" == pCurrentScope->nestName().back()) {
@@ -234,24 +235,17 @@ ErrorHandle searchObjdectDefined(ObjectDefined const** ppOut, std::list<boost::s
             *ppOut = &Value::arrayDefined;
             return {};
         } else if ("Object" == *nestName.begin()) {
-            *ppOut = &Value::baseObject;
+            *ppOut = &Value::objectDefined;
             return {};
         }
     }
-
-    Value const* pValue = &env.globalScope().value();
-    for (auto&& name : nestName) {
-        ErrorHandle error;
-        Value const* pChild = &pValue->getChild(name.to_string(), error);
-        if (error) {
-            return error;
-        }
-        pValue = pChild;
-    }
-    if (nullptr == pValue) {
+    auto nestNameList = toStringList(nestName);
+    Value const* pValue=nullptr;
+    if (auto error = searchValue(&pValue, nestNameList, env)) {
         return MakeErrorHandle(env.source.row())
             << "scope searching error: Don't found ObjectDefined.\n";
     }
+
     if (Value::Type::ObjectDefined != pValue->type) {
         return MakeErrorHandle(env.source.row())
             << "scope searching error: Value is not ObjectDefined.\n";
@@ -278,7 +272,7 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
             env.currentScope().value().init(Value::Type::Array);
             auto startArrayElement = valueLine.skipSpace(p + 1);
             parseArrayElement(env, valueLine, startArrayElement);
-        } else if(&Value::baseObject == pObjectDefined) {
+        } else if(&Value::objectDefined == pObjectDefined) {
             env.currentScope().value().init(Value::Type::Object);
         } else {
             env.currentScope().value() = Object(pObjectDefined);
@@ -422,12 +416,22 @@ OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
     return opType;
 }
 
-ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, Enviroment& env, bool doGetParent)
+ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
+{
+    Value const*pValue;
+    if (auto error = searchValue(&pValue, nestName, env, doGetParent)) {
+        return error;
+    }
+    *ppOut = const_cast<Value*>(pValue);
+    return {};
+}
+
+ErrorHandle searchValue(Value const** ppOut, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
 {
     assert(ppOut != nullptr);
     assert(!nestName.empty());
 
-    Value* pResult = nullptr;
+    Value const* pResult = nullptr;
 
     // Find the starting point of the appropriate place.
     auto rootName = nestName.front();
@@ -447,8 +451,12 @@ ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, E
         }
     }
     if (nullptr == pResult) {
-        return MakeErrorHandle(env.source.row())
-            << "scope searching error!! Don't found '" << rootName << "' in scope stack.";
+        ErrorHandle error;
+        pResult = &env.externObj.getChild(rootName, error);
+        if (error) {
+            return MakeErrorHandle(env.source.row())
+                << "scope searching error!! Don't found '" << rootName << "' in enviroment.";
+        }
     }
 
     // Find a assignment destination at starting point.

@@ -85,6 +85,7 @@ copy3 copy member1 in obj1
 copy4 copy array1
 copy5 copy 0 in array1
 
+###
 Project extend [Object]
   type is string
   targets is array
@@ -116,7 +117,7 @@ FileFilters extend [Object]
   includeDirectories is array by_default
   preprocess is string by_default
   postprocess is string by_default
-
+###
 ##
   Project setting example
 ##

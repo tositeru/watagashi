@@ -54,8 +54,9 @@ struct Value
     using object = Object;
 
     static Value const none;
+    static Value const emptyStr;
     static ObjectDefined const arrayDefined; // dummy objectDefined
-    static ObjectDefined const baseObject;
+    static ObjectDefined const objectDefined;
     static boost::string_view toString(Type type);
     static Type toType(boost::string_view const& str);
 
@@ -69,6 +70,20 @@ struct Value
     Value& operator=(Value const& right);
     Value& operator=(Value &&right);
     ~Value();
+
+    template<typename T>
+    Value(T const& right)
+        : Value()
+    {
+        *this = right;
+    }
+
+    //template<typename T>
+    //Value(T && right)
+    //    : Value()
+    //{
+    //    *this = std::move(right);
+    //}
 
     Value& init(Type type_);
 
@@ -90,6 +105,7 @@ struct Value
 
     void pushValue(Value const& pushValue);
     bool addMember(IScope const& member);
+    bool addMember(std::string const&name, Value const& value);
     void appendStr(boost::string_view const& strView);
 
     std::string toString()const;
@@ -113,6 +129,10 @@ struct MemberDefined
 {
     Value::Type type;
     Value defaultValue;
+
+    MemberDefined() = default;
+    MemberDefined(Value::Type type, Value const& defaultValue);
+    MemberDefined(Value::Type type, Value && defaultValue);
 };
 
 struct Value::InnerData

@@ -16,6 +16,7 @@ struct Enviroment
     Indent indent;
     std::vector<std::shared_ptr<IParseMode>> modeStack;
     std::vector<std::shared_ptr<IScope>> scopeStack;
+    Value externObj;
 
     explicit Enviroment(char const* source_, std::size_t length);
 

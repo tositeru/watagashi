@@ -28,11 +28,49 @@ int main(int argn, char** args)
 {
     try {
         auto options = watagashi::ProgramOptions();
-        if(!options.parse(argn, args)) {
+        if (!options.parse(argn, args)) {
             return 0;
         }
 
-        auto value = parser::parse(boost::filesystem::path("../newConfig.watagashi"));
+        parser::Value projectDefined;
+        projectDefined = parser::ObjectDefined();
+        projectDefined.addMember("type", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+        projectDefined.addMember("targets", parser::MemberDefined(parser::Value::Type::Array, parser::Value::none));
+        projectDefined.addMember("compiler", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+        projectDefined.addMember("outputName", parser::MemberDefined(parser::Value::Type::String, ""s));
+        projectDefined.addMember("outputPath", parser::MemberDefined(parser::Value::Type::String, ""s));
+        projectDefined.addMember("intermediatePath", parser::MemberDefined(parser::Value::Type::String, ""s));
+        projectDefined.addMember("fileFilters", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        projectDefined.addMember("compileOptions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        projectDefined.addMember("includeDirectories", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        projectDefined.addMember("linkOptions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        projectDefined.addMember("linkLibraries", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        projectDefined.addMember("libraryDirectories", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        projectDefined.addMember("version", parser::MemberDefined(parser::Value::Type::Number, 0.0));
+        projectDefined.addMember("minorNumber", parser::MemberDefined(parser::Value::Type::Number, 0.0));
+        projectDefined.addMember("releaseNumber", parser::MemberDefined(parser::Value::Type::Number, 0.0));
+        projectDefined.addMember("preprocess", parser::MemberDefined(parser::Value::Type::String, ""s));
+        projectDefined.addMember("linkPreprocess", parser::MemberDefined(parser::Value::Type::String, ""s));
+        projectDefined.addMember("postprocess", parser::MemberDefined(parser::Value::Type::String, ""s));
+
+        parser::Value directoryDefiend = parser::ObjectDefined();
+        directoryDefiend.addMember("path", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+        directoryDefiend.addMember("extensions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::none));
+        directoryDefiend.addMember("ignores", parser::MemberDefined(parser::Value::Type::Array, parser::Value::none));
+
+        parser::Value fileFiltersDefined = parser::ObjectDefined();
+        fileFiltersDefined.addMember("filepath", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+        fileFiltersDefined.addMember("compileOptions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        fileFiltersDefined.addMember("includeDirectories", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        fileFiltersDefined.addMember("preprocess", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+        fileFiltersDefined.addMember("postprocess", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+
+        parser::ParserDesc desc;
+        desc.externObj.addMember("Project", projectDefined);
+        desc.externObj.addMember("Directory",directoryDefiend);
+        desc.externObj.addMember("FileFilter", fileFiltersDefined);
+
+        auto value = parser::parse(boost::filesystem::path("../newConfig.watagashi"), desc);
         parser::confirmValueInInteractive(value);
 
         if (false) {

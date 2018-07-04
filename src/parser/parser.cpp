@@ -19,7 +19,7 @@ using namespace std;
 namespace parser
 {
 
-Value parse(boost::filesystem::path const& filepath)
+Value parse(boost::filesystem::path const& filepath, ParserDesc const& desc)
 {
     auto source = readFile(filepath);
     for (int i = static_cast<int>(source.size())-1; 0 <= i; --i) {
@@ -28,12 +28,13 @@ Value parse(boost::filesystem::path const& filepath)
             break;
         }
     }
-    return parse(source);
+    return parse(source, desc);
 }
 
-Value parse(char const* source_, std::size_t length)
+Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
 {
     Enviroment env(source_, length);
+    env.externObj = desc.externObj;
 
     bool isGetLine = true;
     Line line(nullptr, 0, 0);
@@ -63,59 +64,59 @@ Value parse(char const* source_, std::size_t length)
         }
     }
 
-    auto& object = env.currentScope().value().get<Value::object>();
-    cout << "member count=" << object.members.size() << endl;
-    for (auto& [name, value] : object.members) {
-        cout << "Type of " << name << " is " << Value::toString(value.type) << ":";
-        switch (value.type) {
-        case Value::Type::String: cout << "'" << value.get<Value::string>() << "'" << endl; break;
-        case Value::Type::Number: cout << value.get<Value::number>() << endl;  break;
-        case Value::Type::Array:
-            cout << endl;
-            for (auto& element : value.get<Value::array>()) {
-                cout << "  " << "Type is " << Value::toString(element.type);
-                if (Value::Type::String == element.type) {
-                    cout << ": '" << element.toString() << "'"<< endl;
-                } else {
-                    cout << ": " << element.toString() << endl;
-                }
-            }
-            cout << endl;
-            break;
-        case Value::Type::Object:
-            cout << endl;
-            for (auto& [childName, childValue] : value.get<Value::object>().members) {
-                cout << "  " << "Type of " << childName << " is " << Value::toString(childValue.type) << ":";
-                switch (childValue.type) {
-                case Value::Type::String: cout << "'" << childValue.get<Value::string>() << "'" << endl; break;
-                case Value::Type::Number: cout << childValue.get<Value::number>() << endl; break;
-                default:
-                    cout << childValue.toString() << endl;
-                }
-            }
-            cout << endl;
-            break;
-        case Value::Type::ObjectDefined:
-            cout << endl;
-            for (auto&[childName, childValue] : value.get<ObjectDefined>().members) {
-                cout << "  " << "Member Type of " << childName << " is " << Value::toString(childValue.type);
-                if (Value::Type::None != childValue.defaultValue.type) {
-                    cout << " by default=" << childValue.defaultValue.toString();
-                }
-                cout << endl;
-            }
-            break;
-        default:
-            cout << "(unknown)" << endl;
-            break;
-        }
-    }
-    ErrorHandle error;
-    auto& arr3 = env.currentScope().value().getChild("array3", error).get<Value::array>();
-    auto& elements = arr3.at(3).get<Value::array>();
-    for (auto& e : elements) {
-        cout << e.toString() << endl;
-    }
+    //auto& object = env.currentScope().value().get<Value::object>();
+    //cout << "member count=" << object.members.size() << endl;
+    //for (auto& [name, value] : object.members) {
+    //    cout << "Type of " << name << " is " << Value::toString(value.type) << ":";
+    //    switch (value.type) {
+    //    case Value::Type::String: cout << "'" << value.get<Value::string>() << "'" << endl; break;
+    //    case Value::Type::Number: cout << value.get<Value::number>() << endl;  break;
+    //    case Value::Type::Array:
+    //        cout << endl;
+    //        for (auto& element : value.get<Value::array>()) {
+    //            cout << "  " << "Type is " << Value::toString(element.type);
+    //            if (Value::Type::String == element.type) {
+    //                cout << ": '" << element.toString() << "'"<< endl;
+    //            } else {
+    //                cout << ": " << element.toString() << endl;
+    //            }
+    //        }
+    //        cout << endl;
+    //        break;
+    //    case Value::Type::Object:
+    //        cout << endl;
+    //        for (auto& [childName, childValue] : value.get<Value::object>().members) {
+    //            cout << "  " << "Type of " << childName << " is " << Value::toString(childValue.type) << ":";
+    //            switch (childValue.type) {
+    //            case Value::Type::String: cout << "'" << childValue.get<Value::string>() << "'" << endl; break;
+    //            case Value::Type::Number: cout << childValue.get<Value::number>() << endl; break;
+    //            default:
+    //                cout << childValue.toString() << endl;
+    //            }
+    //        }
+    //        cout << endl;
+    //        break;
+    //    case Value::Type::ObjectDefined:
+    //        cout << endl;
+    //        for (auto&[childName, childValue] : value.get<ObjectDefined>().members) {
+    //            cout << "  " << "Member Type of " << childName << " is " << Value::toString(childValue.type);
+    //            if (Value::Type::None != childValue.defaultValue.type) {
+    //                cout << " by default=" << childValue.defaultValue.toString();
+    //            }
+    //            cout << endl;
+    //        }
+    //        break;
+    //    default:
+    //        cout << "(unknown)" << endl;
+    //        break;
+    //    }
+    //}
+    //ErrorHandle error;
+    //auto& arr3 = env.currentScope().value().getChild("array3", error).get<Value::array>();
+    //auto& elements = arr3.at(3).get<Value::array>();
+    //for (auto& e : elements) {
+    //    cout << e.toString() << endl;
+    //}
     return std::move(env.currentScope().value());
 }
 

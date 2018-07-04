@@ -88,7 +88,6 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
                 return Result::Next;
             }
             env.currentScope().value() = *pValue;
-
         } else if (OperatorType::PushBack == opType) {
             // push reference scope
             std::list<std::string> targetNestName = toStringList(nestNames);
