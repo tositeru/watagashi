@@ -30,6 +30,9 @@ struct Object
     ObjectDefined const* pDefined;
 
     Object(ObjectDefined const* pDefined);
+
+    ErrorHandle applyObjectDefined();
+
 };
 
 struct Value

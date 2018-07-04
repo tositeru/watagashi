@@ -56,7 +56,10 @@ Value parse(char const* source_, std::size_t length)
 
     if (2 <= env.scopeStack.size()) {
         while (2 <=  env.scopeStack.size()) {
-            env.popScope();
+            if (auto error = closeTopScope(env)) {
+                cerr << error.message() << "\n"
+                    << line.string_view() << endl;
+            }
         }
     }
 

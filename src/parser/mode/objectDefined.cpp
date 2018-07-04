@@ -97,15 +97,20 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
             return Result::Next;
         }
         p = line.skipSpace(p);
+        if (Value::Type::Array == valueType) {
+            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value().init(Value::Type::Array)));
+        } else {
+            auto initValue = Value().init(valueType);
+            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, std::move(initValue)));
+        }
         if (line.isEndLine(p)) {
             return Result::Next;
         }
+
         if (Value::Type::Array == valueType) {
-            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value().init(Value::Type::Array)));
             p = parseArrayElement(env, line, p);
         } else {
             auto valueLine = Line(line.get(p), 0, line.length()-p);
-            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value::none));
             if (auto error = parseValue(env, valueLine)) {
                 cerr << error.message()
                     << line.string_view() << endl;

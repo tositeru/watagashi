@@ -19,6 +19,23 @@ Object::Object(ObjectDefined const* pDefined)
 {
 }
 
+ErrorHandle Object::applyObjectDefined()
+{
+    MakeErrorHandle error(0);
+    for (auto&& [name, memberDefined] : this->pDefined->members) {
+        auto it = this->members.find(name);
+        if (this->members.end() != it) {
+            continue;
+        }
+        if (Value::Type::None == memberDefined.defaultValue.type) {
+            error << " define object error: must set value to '" << name << "'.\n";
+        } else {
+            this->members.insert({name, memberDefined.defaultValue });
+        }
+    }
+    return error;
+}
+
 //-----------------------------------------------------------------------
 //
 //  struct Value
@@ -252,7 +269,8 @@ public:
         auto& objName = this->mMember.nestName().back();
         auto it = obj.members.find(objName);
         if (obj.members.end() == it) {
-            obj.members.insert({ objName, this->mMember.value().get<MemberDefined>() });
+            auto defined = this->mMember.value().get<MemberDefined>();
+            obj.members.insert({ objName,  defined });
         } else {
             it->second = this->mMember.value().get<MemberDefined>();
         }

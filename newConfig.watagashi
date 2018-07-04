@@ -87,15 +87,35 @@ copy5 copy 0 in array1
 
 Project extend [Object]
   type is string
+  targets is array
+  compiler is string
+  outputName is string by_default
+  outputPath is string by_default output
+  intermediatePath is string by_default intermediate
+  fileFilters is array by_default
+  compileOptions is array by_default
+  includeDirectories is array by_default
+  linkOptions is array by_default
+  linkLibraries is array by_default
+  libraryDirectories is array by_default
+  version is number by_default 0
+  minorNumber is number by_default 0
   releaseNumber is number by_default 0
-
-Project2 extend [Project]
-  hoge is number
+  preprocess is string by_default
+  linkPreprocess is string by_default
+  postprocess is string by_default
 
 Directory extend [Object]
   path is string
   extensions is array
   ignores is array by_default
+
+FileFilters extend [Object]
+  filepath is string
+  compileOptions is array by_default
+  includeDirectories is array by_default
+  preprocess is string by_default
+  postprocess is string by_default
 
 ##
   Project setting example
@@ -103,7 +123,6 @@ Directory extend [Object]
 
 watagashi is [Project]
   type is exe
-  releaseNumber is 0
   targets are [Directory]
       path is src
       extensions are cpp, c

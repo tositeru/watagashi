@@ -100,6 +100,20 @@ ErrorHandle closeTopScope(Enviroment& env)
     if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
         env.popMode();
     }
+    if (Value::Type::Object == pCurrentScope->valueType()) {
+        auto& obj = pCurrentScope->value().get<Value::object>();
+        if (auto error = obj.applyObjectDefined()) {
+            std::string fullname = "";
+            std::string accesser = "";
+            for (auto&& name : pCurrentScope->nestName()) {
+                fullname += accesser + name;
+                accesser = ".";
+            }
+            return MakeErrorHandle(env.source.row())
+                << "defined object error!! : An undefined member exists in '" << fullname << "'.\n"
+                << error.message();
+        }
+    }
 
     Value* pParentValue = nullptr;
     if (2 <= pCurrentScope->nestName().size()) {
