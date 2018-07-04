@@ -96,11 +96,9 @@ ErrorHandle closeTopScope(Enviroment& env)
     env.popScope();
     if (IScope::Type::Reference == pCurrentScope->type()) {
         return {};
-    }
-    if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
+    } else if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
         env.popMode();
-    }
-    if (Value::Type::Object == pCurrentScope->valueType()) {
+    } else if (Value::Type::Object == pCurrentScope->valueType()) {
         auto& obj = pCurrentScope->value().get<Value::object>();
         if (auto error = obj.applyObjectDefined()) {
             std::string fullname = "";
@@ -113,6 +111,13 @@ ErrorHandle closeTopScope(Enviroment& env)
                 << "defined object error!! : An undefined member exists in '" << fullname << "'.\n"
                 << error.message();
         }
+    } else if (Value::Type::String == pCurrentScope->valueType()) {
+        auto& str = pCurrentScope->value().get<Value::string>();
+        if (auto error = evalVariableExpansion(str, env)) {
+            return error;
+        }
+    } else if (Value::Type::Array == pCurrentScope->valueType()) {
+        // TODO check reference value
     }
 
     Value* pParentValue = nullptr;
@@ -510,6 +515,44 @@ MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line co
     auto opType = toMemberDefinedOperatorType(line.substr(start, p - start));
     outTailPos = p;
     return opType;
+}
+
+ErrorHandle evalVariableExpansion(std::string & inOutStr, Enviroment const& env)
+{
+    auto str = inOutStr;
+    size_t start = 0;
+    while (true) {
+        start = str.find("${", start);
+        if (std::string::npos == start) {
+            break;
+        }
+        auto end = str.find('}', start);
+        if (std::string::npos == end) {
+            break;
+        }
+        auto strLine = Line(&str[start+2], 0, end - (start+2));
+        size_t lineEnd;
+        auto nestName = toStringList(parseName(lineEnd, strLine, 0));
+        Value const* pValue = nullptr;
+        if (auto error = searchValue(&pValue, nestName, env)) {
+            return error;
+        }
+        switch (pValue->type) {
+        case Value::Type::String:
+            str.replace(start, end - start + 1, pValue->get<Value::string>());
+            break;
+        case Value::Type::Number:
+            str.replace(start, end + 1, pValue->toString());
+            break;
+        default:
+            return MakeErrorHandle(env.source.row())
+                << "syntax error!! Don't expansion type '" << Value::toString(pValue->type) << "'.";
+            break;
+        }
+    }
+
+    inOutStr = str;
+    return {};
 }
 
 }

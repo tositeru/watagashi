@@ -136,7 +136,7 @@ watagashi is [Project]
   outputPath is output
   intermediatePath is intermediate
   preprocess is echo Hello Watagashi
-    echo Var1 variable is ${Var1}
+    echo str1 variable is "${str1}"
 
 # debug version
 watagashi_debug copy watagashi
