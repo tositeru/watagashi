@@ -92,6 +92,11 @@ Project extend [Object]
 Project2 extend [Project]
   hoge is number
 
+Directory extend [Object]
+  path is string
+  extensions is array
+  ignores is array by_default
+
 ##
   Project setting example
 ##

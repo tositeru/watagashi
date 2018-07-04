@@ -19,7 +19,7 @@ using namespace std;
 namespace parser
 {
 
-void parse(boost::filesystem::path const& filepath)
+Value parse(boost::filesystem::path const& filepath)
 {
     auto source = readFile(filepath);
     for (int i = static_cast<int>(source.size())-1; 0 <= i; --i) {
@@ -28,10 +28,10 @@ void parse(boost::filesystem::path const& filepath)
             break;
         }
     }
-    parse(source);
+    return parse(source);
 }
 
-void parse(char const* source_, std::size_t length)
+Value parse(char const* source_, std::size_t length)
 {
     Enviroment env(source_, length);
 
@@ -112,6 +112,102 @@ void parse(char const* source_, std::size_t length)
     auto& elements = arr3.at(3).get<Value::array>();
     for (auto& e : elements) {
         cout << e.toString() << endl;
+    }
+    return std::move(env.currentScope().value());
+}
+
+void showValue(Value const& value)
+{
+    switch (value.type) {
+    case Value::Type::String: cout << "String: '" << value.get<Value::string>() << "'" << endl; break;
+    case Value::Type::Number: cout << "Number: " << value.get<Value::number>() << endl; break;
+    case Value::Type::Array:
+    {
+        auto& arr = value.get<Value::array>();
+        cout << "Array: size=" << arr.size() << endl;
+        for (auto&& element : arr) {
+            cout << "  ";
+            if (Value::Type::String == element.type
+                || Value::Type::Number == element.type) {
+                showValue(element);
+            } else {
+                cout << Value::toString(element.type) << endl;
+            }
+        }
+        break;
+    }
+    case Value::Type::Object:
+    {
+        auto& obj = value.get<Value::object>();
+        cout << "Object: member count=" << obj.members.size() << endl;
+        for (auto&& member : obj.members) {
+            cout << "  " << member.first << " = ";
+            if (Value::Type::String == member.second.type
+                || Value::Type::Number == member.second.type) {
+                showValue(member.second);
+            } else {
+                cout << Value::toString(member.second.type) << endl;
+            }
+        }
+        break;
+    }
+    case Value::Type::ObjectDefined:
+    {
+        auto& defined = value.get<ObjectDefined>();
+        cout << "ObjectDefined: member count=" << defined.members.size() << endl;
+        for (auto&& member : defined.members) {
+            cout << "  " << member.first << ": " << Value::toString(member.second.type);
+            if (Value::Type::None != member.second.defaultValue.type) {
+                cout << " exist default value";
+            }
+            cout << endl;
+        }
+        break;
+    }
+    }
+}
+
+void confirmValueInInteractive(Value const& rootValue)
+{
+    cout << "confirm value mode" << endl;
+    cout << "enter ':show' when you want to confirm all root scope value." << endl;
+    cout << "enter ':fin' when you want to quit." << endl;
+    bool isLoop = true;
+    while (isLoop) {
+        cout << ">";
+        std::string nestName;
+        cin >> nestName;
+        if (":fin" == nestName) {
+            isLoop = false;
+            continue;
+        }
+        if (":show" == nestName) {
+            showValue(rootValue);
+            continue;
+        }
+        size_t endPos;
+        auto line = Line(nestName.c_str(), 0, nestName.size());
+        auto nameList = parseName(endPos, line, 0);
+
+        ErrorHandle error;
+        Value const* pValue = &rootValue;
+        for (auto&& name : nameList) {
+            auto& child = pValue->getChild(name.to_string(), error);
+            if (error) {
+                break;
+            }
+            pValue = &child;
+        }
+        if (error) {
+            cout << "!!error!! Don't found '" << nestName << "'" << endl;
+            if (nullptr != pValue) {
+                cout << "show parent value" << endl;
+                showValue(*pValue);
+            }
+            continue;
+        }
+
+        showValue(*pValue);
     }
 }
 

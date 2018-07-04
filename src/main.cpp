@@ -13,6 +13,7 @@
 #include "data.h"
 
 #include "parser/parser.h"
+#include "parser/value.h"
 
 using namespace json11;
 using namespace std;
@@ -31,7 +32,8 @@ int main(int argn, char** args)
             return 0;
         }
 
-        parser::parse(boost::filesystem::path("../newConfig.watagashi"));
+        auto value = parser::parse(boost::filesystem::path("../newConfig.watagashi"));
+        parser::confirmValueInInteractive(value);
 
         if (false) {
             data::Project project;
