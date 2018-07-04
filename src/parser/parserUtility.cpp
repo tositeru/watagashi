@@ -122,4 +122,13 @@ double toDouble(std::string const& str, bool& isSuccess)
     return num;
 }
 
+bool isReference(std::string const& str)
+{
+    if ('$' != str[0] && '|' == str[1]) {
+        return false;
+    }
+    auto end = str.find('}', 0);
+    return str.size() == end+1;
+}
+
 }

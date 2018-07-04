@@ -48,6 +48,7 @@ bool isParentOrderAccessorChar(char const* c);
 bool isChildOrderAccessorString(boost::string_view const& str);
 bool isArrayElementSeparater(char const* c);
 bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
+bool isReference(std::string const& str);
 
 class ErrorHandle
 {

@@ -293,7 +293,14 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
         if (isNumber) {
             env.currentScope().value() = num;
         } else {
-            env.currentScope().value() = str;
+            if (isReference(str)) {
+                auto strLine = Line(&str[2], 0,str.size()-3);
+                size_t endPos;
+                auto nestName = toStringList(parseName(endPos, strLine, 0));
+                env.currentScope().value() = Reference(&env, nestName);
+            } else {
+                env.currentScope().value() = str;
+            }
         }
     }
 

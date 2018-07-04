@@ -7,9 +7,12 @@
 #include <boost/variant.hpp>
 #include <boost/utility/string_view.hpp>
 
+#include "../exception.hpp"
+
 namespace parser
 {
 
+struct Enviroment;
 class ErrorHandle;
 class IScope;
 
@@ -25,7 +28,6 @@ struct ObjectDefined
 struct Value;
 struct Object
 {
-
     std::unordered_map<std::string, Value> members;
     ObjectDefined const* pDefined;
 
@@ -33,6 +35,14 @@ struct Object
 
     ErrorHandle applyObjectDefined();
 
+};
+
+struct Reference
+{
+    Enviroment const* pEnv;
+    std::list<std::string> nestName;
+    Reference(Enviroment const* pEnv, std::list<std::string> const& nestName);
+    Value const* ref()const;
 };
 
 struct Value
@@ -46,6 +56,7 @@ struct Value
         Object,
         ObjectDefined,
         MemberDefined,
+        Reference,
     };
 
     using string = std::string;
@@ -94,6 +105,7 @@ struct Value
     Value& operator=(object const& right);
     Value& operator=(ObjectDefined const& right);
     Value& operator=(MemberDefined const& right);
+    Value& operator=(Reference const& right);
 
     Value& operator=(NoneValue && right);
     Value& operator=(string && right);
@@ -102,6 +114,7 @@ struct Value
     Value& operator=(object && right);
     Value& operator=(ObjectDefined && right);
     Value& operator=(MemberDefined && right);
+    Value& operator=(Reference && right);
 
     void pushValue(Value const& pushValue);
     bool addMember(IScope const& member);
@@ -144,7 +157,8 @@ struct Value::InnerData
         array,
         object,
         ObjectDefined,
-        MemberDefined> data;
+        MemberDefined,
+        Reference> data;
 };
 
 }

@@ -6,6 +6,7 @@
 #include "../exception.hpp"
 #include "parserUtility.h"
 #include "scope.h"
+#include "parseMode.h"
 
 namespace parser
 {
@@ -51,6 +52,27 @@ MemberDefined::MemberDefined(Value::Type type, Value && defaultValue)
     : type(type)
     , defaultValue(std::move(defaultValue))
 {}
+
+//-----------------------------------------------------------------------
+//
+//  struct Reference
+//
+//-----------------------------------------------------------------------
+
+Reference::Reference(Enviroment const* pEnv, std::list<std::string> const& nestName)
+    : pEnv(pEnv)
+    , nestName(nestName)
+{}
+
+Value const* Reference::ref()const
+{
+    Value const* pValue;
+    if (auto error = searchValue(&pValue, this->nestName, *this->pEnv)) {
+        AWESOME_THROW(std::runtime_error)
+            << "invalid operation. invalid reference value";
+    }
+    return pValue;
+}
 
 //-----------------------------------------------------------------------
 //
@@ -106,6 +128,7 @@ Value& Value::init(Type type_)
     case Type::Object: this->pData->data = object(&Value::objectDefined); break;
     case Type::ObjectDefined: this->pData->data = ObjectDefined{}; break;
     case Type::MemberDefined: this->pData->data = MemberDefined{}; break;
+    case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;
     }
     this->type = type_;
     return *this;
@@ -160,6 +183,13 @@ Value& Value::operator=(MemberDefined const& right)
     return *this;
 }
 
+Value& Value::operator=(Reference const& right)
+{
+    this->pData->data = right;
+    this->type = Type::Reference;
+    return *this;
+}
+
 Value& Value::operator=(NoneValue && right)
 {
     this->pData->data = std::move(right);
@@ -209,6 +239,12 @@ Value& Value::operator=(MemberDefined && right)
     return *this;
 }
 
+Value& Value::operator=(Reference && right)
+{
+    this->pData->data = std::move(right);
+    this->type = Type::Reference;
+    return *this;
+}
 
 class PushValue : public boost::static_visitor<void>
 {
@@ -228,7 +264,19 @@ public:
     template<>
     void operator()(Value::array& arr)const
     {
-        arr.push_back(this->mPushValue);
+        if (Value::Type::Reference == this->mPushValue.type) {
+            auto& ref = this->mPushValue.get<Reference>();
+            Value const* pValue = ref.ref();
+
+            if (Value::Type::Array == pValue->type) {
+                auto refArr = pValue->get<Value::array>();
+                arr.insert(arr.end(), refArr.begin(), refArr.end());
+            } else {
+                arr.push_back(*pValue);
+            }
+        } else {
+            arr.push_back(this->mPushValue);
+        }
     }
 
 };
@@ -267,22 +315,35 @@ public:
         auto& name = this->mName;
         bool isNumber = false;
         auto index = static_cast<int>(toDouble(name, isNumber));
-        if (isNumber && 0 <= index && index < arr.size()) {
-            arr[index] = this->mValue;
-            return true;
+        if (!(isNumber && 0 <= index && index < arr.size())) {
+            return false;
         }
-        return false;
+        if (Value::Type::Reference == this->mValue.type) {
+            auto& ref = this->mValue.get<Reference>();
+            Value const* pValue = ref.ref();
+            arr[index] = *pValue;
+        } else {
+            arr[index] = this->mValue;
+        }
+
+        return true;
     }
 
     template<>
     bool operator()(Value::object& obj)const
     {
+        Value const* pValue = &this->mValue;
+        if (Value::Type::Reference == this->mValue.type) {
+            auto& ref = this->mValue.get<Reference>();
+            pValue = ref.ref();
+        }
+
         auto& objName = this->mName;
         auto it = obj.members.find(objName);
         if (obj.members.end() == it) {
-            obj.members.insert({ objName, this->mValue });
+            obj.members.insert({ objName, *pValue });
         } else {
-            it->second = this->mValue;
+            it->second = *pValue;
         }
         return true;
     }
@@ -403,6 +464,17 @@ public:
     std::string operator()(MemberDefined const& memberDefined)const
     {
         return "[ObjectDefined](" + Value::toString(memberDefined.type).to_string() + ")";
+    }
+
+    std::string operator()(Reference const& ref)const
+    {
+        std::string separater = "";
+        std::string name = "";
+        for (auto&& n : ref.nestName) {
+            name += separater + n;
+            separater = '.';
+        }
+        return "[Reference](" + name + ")";
     }
 
 };
