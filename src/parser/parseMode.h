@@ -44,6 +44,6 @@ ErrorHandle parseObjectName(std::list<boost::string_view>& out, size_t& outTail,
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos);
 MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line const& line, size_t start);
 ErrorHandle searchObjdectDefined(ObjectDefined const** ppOut, std::list<boost::string_view> const& nestName, Enviroment const& env);
-ErrorHandle evalVariableExpansion(std::string & inOutStr, Enviroment const& env);
+ErrorHandle expandVariable(std::string & inOutStr, Enviroment const& env);
 
 }

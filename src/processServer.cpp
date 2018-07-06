@@ -63,6 +63,7 @@ Process_::Process_(
 
 Process_::BuildResult Process_::compile()const
 {
+    //cout << "run " << this->inputFilepath << endl;
     auto& project = builder.project();
     auto& taskBundle = data::getTaskBundle(compiler, project.type);
     auto& task = taskBundle.compileObj;
@@ -80,10 +81,36 @@ Process_::BuildResult Process_::compile()const
             : BuildResult::Failed;
     }
 
-    auto cmd = data::makeCompileCommand(taskBundle.compileObj, this->inputFilepath, this->outputFilepath, project);
+    // check match Filter
+    data::FileFilter const* pFileFilter = nullptr;
+    for (auto&& filter : project.fileFilters) {
+        if (matchFilepath(filter.targetKeyward, inputFilepath, project.rootDirectory)) {
+            pFileFilter = &filter;
+            break;
+        }
+    }
+    if (pFileFilter) {
+        auto result = data::runProcesses(pFileFilter->preprocess, runData);
+        if (data::TaskProcess::Result::Success != result) {
+            return preprocessResult == data::TaskProcess::Result::Skip
+                ? BuildResult::Skip
+                : BuildResult::Failed;
+        }
+    }
+
+    auto cmd = data::makeCompileCommand(taskBundle.compileObj, this->inputFilepath, this->outputFilepath, project, pFileFilter);
     cout << "running: " << cmd << endl;
     if (!runCommand(cmd)) {
         return BuildResult::Failed;
+    }
+
+    if (pFileFilter) {
+        auto result = data::runProcesses(pFileFilter->postprocess, runData);
+        if (data::TaskProcess::Result::Success != result) {
+            return preprocessResult == data::TaskProcess::Result::Skip
+                ? BuildResult::Skip
+                : BuildResult::Failed;
+        }
     }
 
     auto postprocessResult = data::runProcesses(task.postprocesses, runData);

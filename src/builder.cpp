@@ -472,7 +472,7 @@ void Builder_::build()const
     auto& compiler = this->mCompilerMap.find(this->mProject.compiler)->second;
     auto& taskBundle = data::getTaskBundle(compiler, this->mProject.type);
 
-    if (!runCommand(this->parseVariables(this->mProject.postprocess, Scope()))) {
+    if (!runCommand(this->parseVariables(this->mProject.preprocess, Scope()))) {
         cerr << "Failed preprocess..." << endl;
         return;
     }
@@ -509,7 +509,7 @@ void Builder_::build()const
 
     auto outputPath = this->mProject.makeOutputFilepath();
     bool isLink = (0 == processServer.failedCount() && 1 <= processServer.successCount());
-    isLink |= !fs::exists(outputPath);
+    isLink |= !fs::exists(outputPath) && processServer.failedCount() <= 0;
     if (isLink) {
         auto outputFilepath = this->mProject.makeOutputFilepath();
         createDirectory(outputFilepath.parent_path());
@@ -517,6 +517,7 @@ void Builder_::build()const
         scope.outputFilepath = outputFilepath;
         if (!runCommand(this->parseVariables(this->mProject.linkPreprocess, scope))) {
             cerr << "Failed link preprocess..." << endl;
+            return;
         }
 
         auto linkCmd = data::makeLinkCommand(taskBundle.linkObjs, outputFilepath, linkTargets, this->mProject);
@@ -531,7 +532,9 @@ void Builder_::build()const
 
     if (!runCommand(this->parseVariables(this->mProject.postprocess, Scope()))) {
         cerr << "Failed postprocess..." << endl;
+        return;
     }
+    cout << "!! Complete build !!" << endl;
 }
 
 void Builder_::clean()const

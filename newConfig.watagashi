@@ -85,42 +85,11 @@ copy3 copy member1 in obj1
 copy4 copy array1
 copy5 copy 0 in array1
 
-###
-Project extend [Object]
-  type is string
-  targets is array
-  compiler is string
-  outputName is string by_default
-  outputPath is string by_default output
-  intermediatePath is string by_default intermediate
-  fileFilters is array by_default
-  compileOptions is array by_default
-  includeDirectories is array by_default
-  linkOptions is array by_default
-  linkLibraries is array by_default
-  libraryDirectories is array by_default
-  version is number by_default 0
-  minorNumber is number by_default 0
-  releaseNumber is number by_default 0
-  preprocess is string by_default
-  linkPreprocess is string by_default
-  postprocess is string by_default
-
-Directory extend [Object]
-  path is string
-  extensions is array
-  ignores is array by_default
-
-FileFilters extend [Object]
-  filepath is string
-  compileOptions is array by_default
-  includeDirectories is array by_default
-  preprocess is string by_default
-  postprocess is string by_default
-###
 ##
   Project setting example
 ##
+libraryPrefix is lib
+librarySuffix is -vc141-mt-s-x64-1_67
 
 watagashi is [Project]
   type is exe
@@ -128,10 +97,15 @@ watagashi is [Project]
       path is src
       extensions are cpp, c
       ignores are main.c
+  fileFilters are [FileFilter]
+      filepath is @main.cpp
+      preprocess is echo compile main.cpp
+      postprocess is echo finish to compile main.cpp
   compiler is clang++
-  compileOptions are -O2
-  linkLibraries are boost_system, boost_filesystem,
-    boost_program_options, boost_stacktrace
+  compileOptions are -O2, -std=c++17
+  includeDirectories are C:\Boost\include\boost-1_67
+  linkLibraries are ${libraryPrefix}boost_system${librarySuffix}, ${libraryPrefix}boost_filesystem${librarySuffix}, ${libraryPrefix}boost_program_options${librarySuffix}
+  libraryDirectories are C:\Boost\lib
   outputName is watagashi
   outputPath is output
   intermediatePath is intermediate

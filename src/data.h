@@ -95,14 +95,15 @@ struct FileFilter
     std::vector<TaskProcess> postprocess;
 
     // for compile
-    std::vector<std::string> compileOptions;
-    std::vector<boost::filesystem::path> includeDirectories;
+    std::unordered_set<std::string> compileOptions;
+    std::unordered_set<boost::filesystem::path> includeDirectories;
 
 };
 
 struct Project
 {
     enum class Type {
+        Unknown,
         Exe,
         Static,
         Shared,
@@ -137,6 +138,8 @@ struct Project
     std::string linkPreprocess;
     std::string postprocess;
 
+    static std::string const& toString(Type type);
+    static Type toType(std::string const& str);
 
 public:
     boost::filesystem::path makeOutputFilepath()const;
@@ -152,13 +155,15 @@ std::string makeCompileCommand(
     boost::filesystem::path const& inputFilepath,
     boost::filesystem::path const& outputFilepath,
     std::unordered_set<std::string> const& options,
-    std::unordered_set<boost::filesystem::path> const& includeDirectories);
+    std::unordered_set<boost::filesystem::path> const& includeDirectories,
+    FileFilter const* pFileFilter);
 
 std::string makeCompileCommand(
     Task const& task,
     boost::filesystem::path const& inputFilepath,
     boost::filesystem::path const& outputFilepath,
-    Project const& project);
+    Project const& project,
+    FileFilter const* pFileFilter);
 
 std::string makeLinkCommand(
     Task const& task,

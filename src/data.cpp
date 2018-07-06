@@ -1,5 +1,8 @@
 #include "data.h"
 
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
+
 #include "exception.hpp"
 #include "includeFileAnalyzer.h"
 
@@ -63,7 +66,8 @@ std::string makeCompileCommand(
     boost::filesystem::path const& inputFilepath,
     boost::filesystem::path const& outputFilepath,
     std::unordered_set<std::string> const& options,
-    std::unordered_set<boost::filesystem::path> const& includeDirectories)
+    std::unordered_set<boost::filesystem::path> const& includeDirectories,
+    FileFilter const* pFileFilter)
 {
     std::stringstream cmd;
     cmd << task.command;
@@ -92,7 +96,19 @@ std::string makeCompileCommand(
 
     // include directories
     for (auto& dir : includeDirectories) {
-        cmd << " -I=" << dir;
+        cmd << " -I" << dir;
+    }
+
+    if (pFileFilter) {
+        // options
+        for (auto& op : pFileFilter->compileOptions) {
+            cmd << " " << op;
+        }
+
+        // include directories
+        for (auto& dir : pFileFilter->includeDirectories) {
+            cmd << " -I" << dir;
+        }
     }
 
     // option suffix
@@ -107,9 +123,10 @@ std::string makeCompileCommand(
     Task const& task,
     boost::filesystem::path const& inputFilepath,
     boost::filesystem::path const& outputFilepath,
-    Project const& project)
+    Project const& project,
+    FileFilter const* pFileFilter)
 {
-    return makeCompileCommand(task, inputFilepath, outputFilepath, project.compileOptions, project.includeDirectories);
+    return makeCompileCommand(task, inputFilepath, outputFilepath, project.compileOptions, project.includeDirectories, pFileFilter);
 }
 
 std::string makeLinkCommand(
@@ -295,6 +312,30 @@ Compiler&& Compiler::setShared(TaskBundle&& bundle_)
 //  struct Project
 //
 //--------------------------------------------------------------------------------------
+
+using ProjectTypeBimap = boost::bimap<std::string, Project::Type>;
+static const ProjectTypeBimap projectTypeBimap = boost::assign::list_of<ProjectTypeBimap::relation>
+    ("exe", Project::Type::Exe)
+    ("static", Project::Type::Static)
+    ("shared", Project::Type::Shared);
+
+std::string const& Project::toString(Type type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = projectTypeBimap.right.find(type);
+    return projectTypeBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
+
+Project::Type Project::toType(std::string const& str)
+{
+    auto it = projectTypeBimap.left.find(str);
+    return projectTypeBimap.left.end() == it
+        ? Type::Unknown
+        : it->get_right();
+}
+
 boost::filesystem::path Project::makeOutputFilepath()const
 {
     auto path = this->rootDirectory / this->outputPath;

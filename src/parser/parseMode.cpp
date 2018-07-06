@@ -113,7 +113,7 @@ ErrorHandle closeTopScope(Enviroment& env)
         }
     } else if (Value::Type::String == pCurrentScope->valueType()) {
         auto& str = pCurrentScope->value().get<Value::string>();
-        if (auto error = evalVariableExpansion(str, env)) {
+        if (auto error = expandVariable(str, env)) {
             return error;
         }
     } else if (Value::Type::Array == pCurrentScope->valueType()) {
@@ -524,7 +524,7 @@ MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line co
     return opType;
 }
 
-ErrorHandle evalVariableExpansion(std::string & inOutStr, Enviroment const& env)
+ErrorHandle expandVariable(std::string & inOutStr, Enviroment const& env)
 {
     auto str = inOutStr;
     size_t start = 0;
