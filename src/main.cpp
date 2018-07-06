@@ -5,28 +5,21 @@
 #include <boost/range/adaptor/filtered.hpp>
 
 #include "utility.h"
-#include "config.h"
-#include "configJsonParser.h"
 #include "builder.h"
 #include "programOptions.h"
 #include "exception.hpp"
-#include "specialVariables.h"
 #include "includeFileAnalyzer.h"
 #include "data.h"
-
 #include "parser/parser.h"
 #include "parser/value.h"
-
 #include "parser/parserUtility.h"
 
-
-using namespace json11;
 using namespace std;
 using namespace watagashi;
 namespace fs = boost::filesystem;
 
 static data::Project createProject(parser::Value const& externObj, watagashi::ProgramOptions const& options);
-static void setBuilder(Builder_ &builder, parser::Value const& configData);
+static void setBuilder(Builder &builder, parser::Value const& configData);
 static void definedBuildInData(parser::Value& externObj);
 static data::Compiler createClangCppCompiler();
 static data::Compiler createGccCppCompiler();
@@ -48,7 +41,7 @@ int main(int argn, char** args)
         //parser::confirmValueInInteractive(configData);
 
         data::Project project = createProject(configData, options);
-        Builder_ builder(project, options);
+        Builder builder(project, options);
         setBuilder(builder, configData);
 
         //project.name = "test";
@@ -137,9 +130,9 @@ data::Project createProject(parser::Value const& configData, watagashi::ProgramO
     getStringArray(project.linkOptions, "linkOptions", projectValue);
     getStringArray(project.linkLibraries, "linkLibraries", projectValue);
     getStringArray(project.libraryDirectories, "libraryDirectories", projectValue);
-    project.version = getNumber("version", static_cast<size_t>(0), projectValue);
-    project.minorNumber = getNumber("minorNumber", static_cast<size_t>(0), projectValue);
-    project.releaseNumber = getNumber("releaseNumber", static_cast<size_t>(0), projectValue);
+    project.version = getNumber("version", static_cast<int>(0), projectValue);
+    project.minorNumber = getNumber("minorNumber", static_cast<int>(0), projectValue);
+    project.releaseNumber = getNumber("releaseNumber", static_cast<int>(0), projectValue);
     project.preprocess = getString("preprocess", "", projectValue);
     project.linkPreprocess = getString("linkPreprocess", "", projectValue);
     project.postprocess = getString("postprocess", "", projectValue);
@@ -225,7 +218,7 @@ data::Project createProject(parser::Value const& configData, watagashi::ProgramO
     return project;
 }
 
-void setBuilder(Builder_ &builder, parser::Value const& configData)
+void setBuilder(Builder &builder, parser::Value const& configData)
 {
 
 }

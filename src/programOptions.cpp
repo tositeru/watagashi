@@ -75,7 +75,7 @@ bool ProgramOptions::parse(int argv, char** args)
             return false;
         }
         
-        boost::range::transform(this->task, this->task.begin(), [](char c){ return ::tolower(c); });
+        boost::range::transform(this->task, this->task.begin(), [](char c){ return static_cast<char>(::tolower(c)); });
         
         this->currentPath = fs::path(this->configFilepath).parent_path().string();
         if(this->currentPath.empty()) {
