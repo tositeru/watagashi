@@ -108,7 +108,7 @@ Value::~Value()
 
 Value::Value(Value const& right)
     : type(right.type)
-    , pData(std::make_unique<InnerData>(*right.pData))
+    , pData(std::make_unique<InnerData>(right.pData->data))
 {}
 
 Value::Value(Value && right)
@@ -130,6 +130,86 @@ Value& Value::operator=(Value &&right)
     return *this;
 }
 
+Value::Value(NoneValue const& right)
+    : type(Type::None)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(string const& right)
+    : type(Type::String)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(number const& right)
+    : type(Type::Number)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(array const& right)
+    : type(Type::Array)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(object const& right)
+    : type(Type::Object)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(ObjectDefined const& right)
+    : type(Type::ObjectDefined)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(MemberDefined const& right)
+    : type(Type::MemberDefined)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(Reference const& right)
+    : type(Type::Reference)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(NoneValue && right)
+    : type(Type::None)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(string && right)
+    : type(Type::String)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(number && right)
+    : type(Type::Number)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(array && right)
+    : type(Type::Array)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(object && right)
+    : type(Type::Object)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(ObjectDefined && right)
+    : type(Type::ObjectDefined)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(MemberDefined && right)
+    : type(Type::MemberDefined)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(Reference && right)
+    : type(Type::Reference)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
 Value& Value::init(Type type_)
 {
     switch (type_) {
@@ -143,118 +223,6 @@ Value& Value::init(Type type_)
     case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;
     }
     this->type = type_;
-    return *this;
-}
-
-Value& Value::operator=(NoneValue const& right)
-{
-    this->pData->data = right;
-    this->type = Type::None;
-    return *this;
-}
-
-Value& Value::operator=(string const& right)
-{
-    this->pData->data = right;
-    this->type = Type::String;
-    return *this;
-}
-
-Value& Value::operator=(number const& right)
-{
-    this->pData->data = right;
-    this->type = Type::Number;
-    return *this;
-}
-
-Value& Value::operator=(array const& right)
-{
-    this->pData->data = right;
-    this->type = Type::Array;
-    return *this;
-}
-
-Value& Value::operator=(object const& right)
-{
-    this->pData->data = right;
-    this->type = Type::Object;
-    return *this;
-}
-
-Value& Value::operator=(ObjectDefined const& right)
-{
-    this->pData->data = right;
-    this->type = Type::ObjectDefined;
-    return *this;
-}
-
-Value& Value::operator=(MemberDefined const& right)
-{
-    this->pData->data = right;
-    this->type = Type::MemberDefined;
-    return *this;
-}
-
-Value& Value::operator=(Reference const& right)
-{
-    this->pData->data = right;
-    this->type = Type::Reference;
-    return *this;
-}
-
-Value& Value::operator=(NoneValue && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::None;
-    return *this;
-}
-
-Value& Value::operator=(string && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::String;
-    return *this;
-}
-
-Value& Value::operator=(number && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::Number;
-    return *this;
-}
-
-Value& Value::operator=(array && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::Array;
-    return *this;
-}
-
-Value& Value::operator=(object && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::Object;
-    return *this;
-}
-
-Value& Value::operator=(ObjectDefined && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::ObjectDefined;
-    return *this;
-}
-
-Value& Value::operator=(MemberDefined && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::MemberDefined;
-    return *this;
-}
-
-Value& Value::operator=(Reference && right)
-{
-    this->pData->data = std::move(right);
-    this->type = Type::Reference;
     return *this;
 }
 

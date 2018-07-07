@@ -86,39 +86,41 @@ struct Value
     Value& operator=(Value &&right);
     ~Value();
 
-    template<typename T>
-    Value(T const& right)
-        : Value()
-    {
-        *this = right;
-    }
+    Value(NoneValue const& right);
+    Value(string const& right);
+    Value(number const& right);
+    Value(array const& right);
+    Value(object const& right);
+    Value(ObjectDefined const& right);
+    Value(MemberDefined const& right);
+    Value(Reference const& right);
 
-    //template<typename T>
-    //Value(T && right)
-    //    : Value()
-    //{
-    //    *this = std::move(right);
-    //}
+    Value(NoneValue && right);
+    Value(string && right);
+    Value(number && right);
+    Value(array && right);
+    Value(object && right);
+    Value(ObjectDefined && right);
+    Value(MemberDefined && right);
+    Value(Reference && right);
 
     Value& init(Type type_);
 
-    Value& operator=(NoneValue const& right);
-    Value& operator=(string const& right);
-    Value& operator=(number const& right);
-    Value& operator=(array const& right);
-    Value& operator=(object const& right);
-    Value& operator=(ObjectDefined const& right);
-    Value& operator=(MemberDefined const& right);
-    Value& operator=(Reference const& right);
+    template<typename T>
+    Value& operator=(T const& right)
+    {
+        Value tmp(right);
+        *this = std::move(tmp);
+        return *this;
+    }
 
-    Value& operator=(NoneValue && right);
-    Value& operator=(string && right);
-    Value& operator=(number && right);
-    Value& operator=(array && right);
-    Value& operator=(object && right);
-    Value& operator=(ObjectDefined && right);
-    Value& operator=(MemberDefined && right);
-    Value& operator=(Reference && right);
+    template<typename T>
+    Value& operator=(T&& right)
+    {
+        Value tmp(std::move(right));
+        *this = std::move(tmp);
+        return *this;
+    }
 
     void pushValue(Value const& pushValue);
     bool addMember(IScope const& member);
@@ -154,6 +156,7 @@ struct MemberDefined
 
 struct Value::InnerData
 {
+    // TODO use std::variant after all
     boost::variant<
         NoneValue,
         string,
@@ -163,6 +166,31 @@ struct Value::InnerData
         ObjectDefined,
         MemberDefined,
         Reference> data;
+
+    InnerData()
+        : data(NoneValue())
+    {}
+
+    InnerData(InnerData const& right)
+        : data(right.data)
+    {}
+
+    InnerData(InnerData && right)
+        // TODO use std::variant after all
+        : data(right.data)
+    {}
+
+    template<typename T>
+    InnerData(T const& right)
+        : data(right)
+    {}
+
+    template<typename T>
+    InnerData(T&& right)
+    {
+        // TODO use std::variant after all
+        this->data = right;
+    }
 };
 
 }
