@@ -149,12 +149,12 @@ public:
         return *this;
     }
 
-    Exception operator<<(MakeExceptionCommand &&x)
+    Exception operator<<(MakeExceptionCommand &&)
     {
         return this->makeException();
     }
 
-    Exception operator<<(MakeExceptionCommand const&x)
+    Exception operator<<(MakeExceptionCommand const&)
     {
         return this->makeException();
     }

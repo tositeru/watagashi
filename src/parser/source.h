@@ -22,7 +22,7 @@ public:
     // other
     //
 
-    size_t getLineTail()const;
+    size_t getLineEnd()const;
     Line getLine()const;
     void goNextLine();
 

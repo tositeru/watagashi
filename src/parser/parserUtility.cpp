@@ -113,8 +113,8 @@ std::list<std::string> toStringList(std::list<boost::string_view> const& list)
 
 double toDouble(std::string const& str, bool& isSuccess)
 {
-    char* tail;
-    auto num = strtod(str.c_str(), &tail);
+    char* end;
+    auto num = strtod(str.c_str(), &end);
     isSuccess = true;
     if (0 == num) {
         bool isNumber = ('0' == str[0]);

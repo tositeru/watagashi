@@ -167,7 +167,7 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
         return valuePos;
     }
 
-    auto getTail = [](Line& line, size_t start) -> size_t {
+    auto getEndPos = [](Line& line, size_t start) -> size_t {
         // search explicit separator of string array element 
         for (auto p = start; !line.isEndLine(p + 1); ++p) {
             auto strView = boost::string_view(line.get(p), 2);
@@ -180,20 +180,20 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
                 return !isArrayElementSeparater(line.get(p));
             });
     };
-    auto tail = getTail(line, valuePos);
+    auto endPos = getEndPos(line, valuePos);
 
     do {
-        auto valueLine = Line(line.get(valuePos), 0, tail - valuePos);
+        auto valueLine = Line(line.get(valuePos), 0, endPos - valuePos);
         env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value()));
         parseValue(env, valueLine);
 
-        tail += ('\\' == *line.get(tail)) ? 2 : 1;
-        valuePos = line.skipSpace(tail);
+        endPos += ('\\' == *line.get(endPos)) ? 2 : 1;
+        valuePos = line.skipSpace(endPos);
 
         if (line.isEndLine(valuePos)) {
             break;
         }
-        tail = getTail(line, valuePos);
+        endPos = getEndPos(line, valuePos);
 
         closeTopScope(env);
     } while (!line.isEndLine(valuePos));
@@ -393,12 +393,12 @@ std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, si
     return { result, p };
 }
 
-OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
+OperatorType parseOperator(size_t& outEndPos, Line const& line, size_t start)
 {
     start = line.skipSpace(start);
     auto p = line.incrementPos(start, [](auto line, auto p) { return !isSpace(line.get(p)); });
     auto opType = toOperatorType(line.substr(start, p - start));
-    outTailPos = p;
+    outEndPos = p;
     return opType;
 }
 
@@ -480,12 +480,12 @@ Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
     return type;
 }
 
-MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line const& line, size_t start)
+MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outEndPos, Line const& line, size_t start)
 {
     start = line.skipSpace(start);
     auto p = line.incrementPos(start, [](auto line, auto p) { return !isSpace(line.get(p)); });
     auto opType = toMemberDefinedOperatorType(line.substr(start, p - start));
-    outTailPos = p;
+    outEndPos = p;
     return opType;
 }
 

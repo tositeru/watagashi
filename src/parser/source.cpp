@@ -23,7 +23,7 @@ bool Source::isEof()const
 
 Line Source::getLine(bool doGoNextLine)
 {
-    auto result = Line(this->mSource, this->mPos, this->getLineTail());
+    auto result = Line(this->mSource, this->mPos, this->getLineEnd());
     if (doGoNextLine) {
         this->mPos = result.getNextLineHead();
         ++this->mRow;
@@ -37,7 +37,7 @@ size_t Source::row()const { return this->mRow; }
 // other
 //
 
-size_t Source::getLineTail()const
+size_t Source::getLineEnd()const
 {
     auto i = this->mPos;
     for (; i < this->mLength; ++i) {
@@ -50,12 +50,12 @@ size_t Source::getLineTail()const
 
 Line Source::getLine()const
 {
-    return Line(this->mSource, this->mPos, this->getLineTail());
+    return Line(this->mSource, this->mPos, this->getLineEnd());
 }
 
 void Source::goNextLine()
 {
-    this->mPos = this->getLineTail() + 1;
+    this->mPos = this->getLineEnd() + 1;
     ++this->mRow;
 }
 

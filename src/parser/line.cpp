@@ -5,28 +5,28 @@
 namespace parser
 {
 
-Line::Line(char const* source_, size_t head_, size_t tail)
+Line::Line(char const* source_, size_t begin_, size_t end)
     : mSource(source_)
-    , mHead(head_)
-    , mLength(tail - head_)
+    , mBegin(begin_)
+    , mLength(end - begin_)
 {}
 
-void Line::resize(size_t headOffset, size_t tailOffset)
+void Line::resize(size_t beginOffset, size_t endOffset)
 {
-    this->mHead += headOffset;
-    this->mLength = this->mLength - std::min(this->mLength, tailOffset + headOffset);
+    this->mBegin += beginOffset;
+    this->mLength = this->mLength - std::min(this->mLength, endOffset + beginOffset);
 }
 
 char const* Line::get(size_t pos) const
 {
     pos = std::min(pos, this->mLength);
-    return &this->mSource[this->mHead + pos];
+    return &this->mSource[this->mBegin + pos];
 }
 
 char const* Line::rget(size_t pos)const
 {
     pos = std::min(pos + 1, this->mLength);
-    auto p = this->mHead + this->mLength - pos;
+    auto p = this->mBegin + this->mLength - pos;
     return &this->mSource[p];
 }
 
@@ -37,17 +37,17 @@ bool Line::isEndLine(size_t pos)const
 
 size_t Line::getNextLineHead()const
 {
-    return this->mHead + this->mLength + 1;
+    return this->mBegin + this->mLength + 1;
 }
 
 size_t Line::length()const { return this->mLength; }
 boost::string_view Line::string_view() const {
-    return boost::string_view(&this->mSource[this->mHead], this->mLength);
+    return boost::string_view(&this->mSource[this->mBegin], this->mLength);
 }
 
 boost::string_view Line::substr(size_t start, size_t length)const
 {
-    return boost::string_view(&this->mSource[this->mHead + start], std::min(length, this->mLength));
+    return boost::string_view(&this->mSource[this->mBegin + start], std::min(length, this->mLength));
 }
 
 size_t Line::incrementPos(size_t start, std::function<bool(Line const& line, size_t p)> continueLoop)const

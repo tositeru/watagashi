@@ -10,9 +10,9 @@ namespace parser
 class Line
 {
 public:
-    Line(char const* source_, size_t head_, size_t tail);
+    Line(char const* source_, size_t begin_, size_t end);
 
-    void resize(size_t headOffset, size_t tailOffset);
+    void resize(size_t beginOffset, size_t endOffset);
 
     char const* get(size_t pos) const;
     char const* rget(size_t pos)const;
@@ -32,7 +32,7 @@ public:
 
 private:
     char const* mSource;
-    size_t mHead;
+    size_t mBegin;
     size_t mLength;
 
 };
