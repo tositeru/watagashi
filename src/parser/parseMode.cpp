@@ -15,7 +15,7 @@ using namespace std;
 namespace parser
 {
 
-ErrorHandle evalIndent(Enviroment& env, Line& line, int& outLevel)
+int evalIndent(Enviroment& env, Line& line)
 {
     auto indent = line.getIndent();
     auto level = env.indent.calLevel(indent);
@@ -23,13 +23,14 @@ ErrorHandle evalIndent(Enviroment& env, Line& line, int& outLevel)
     if (-1 == level) {
         if (!line.find(0, [](auto line, auto p) {  return !isSpace(line.get(p)); })) {
             // skip if blank line
-            return {};
+            return env.indent.currentLevel();
         }
 
         if (0 == env.indent.currentLevel()) {
             env.indent.setUnit(indent);
         } else {
-            return MakeErrorHandle(env.source.row()) << "invalid indent";
+            throw MakeException<SyntaxException>()
+                << "invalid indent" << MAKE_EXCEPTION;
         }
     } else {
         if (1 == level) {
@@ -39,8 +40,7 @@ ErrorHandle evalIndent(Enviroment& env, Line& line, int& outLevel)
     }
 
     line.resize(indent.size(), 0);
-    outLevel = env.indent.currentLevel();
-    return {};
+    return env.indent.currentLevel();
 }
 
 CommentType evalComment(Enviroment& env, Line& line)
@@ -86,7 +86,7 @@ CommentType evalComment(Enviroment& env, Line& line)
     return CommentType::None;
 }
 
-ErrorHandle closeTopScope(Enviroment& env)
+void closeTopScope(Enviroment& env)
 {
     // note: At the timing of closing the scope,
     //  we assign values to appropriate places.
@@ -95,36 +95,28 @@ ErrorHandle closeTopScope(Enviroment& env)
     auto pCurrentScope = env.currentScopePointer();
     env.popScope();
     if (IScope::Type::Reference == pCurrentScope->type()) {
-        return {};
+        return ;
     } else if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
+        auto& objectDefined = pCurrentScope->value().get<ObjectDefined>();
+        objectDefined.name = pCurrentScope->nestName().back();
         env.popMode();
     } else if (Value::Type::Object == pCurrentScope->valueType()) {
         auto& obj = pCurrentScope->value().get<Value::object>();
-        if (auto error = obj.applyObjectDefined()) {
-            std::string fullname = "";
-            std::string accesser = "";
-            for (auto&& name : pCurrentScope->nestName()) {
-                fullname += accesser + name;
-                accesser = ".";
-            }
-            return MakeErrorHandle(env.source.row())
-                << "defined object error!! : An undefined member exists in '" << fullname << "'.\n"
-                << error.message();
+        if (!obj.applyObjectDefined()) {
+            std::string fullname = toNameString(pCurrentScope->nestName());
+            throw MakeException<DefinedObjectException>()
+                << "An undefined member exists in '" << fullname << "." << MAKE_EXCEPTION;
         }
     } else if (Value::Type::String == pCurrentScope->valueType()) {
         auto& str = pCurrentScope->value().get<Value::string>();
-        if (auto error = expandVariable(str, env)) {
-            return error;
-        }
+        str = expandVariable(str, env);
     } else if (Value::Type::Array == pCurrentScope->valueType()) {
         // TODO check reference value
     }
 
     Value* pParentValue = nullptr;
     if (2 <= pCurrentScope->nestName().size()) {
-        if (auto error = searchValue(&pParentValue, pCurrentScope->nestName(), env, true)) {
-            return error;
-        }
+        pParentValue = searchValue(pCurrentScope->nestName(), env, true);
     } else {
         pParentValue = &env.currentScope().value();
     }
@@ -132,7 +124,8 @@ ErrorHandle closeTopScope(Enviroment& env)
     switch (pParentValue->type) {
     case Value::Type::Object:
         if (!pParentValue->addMember(*pCurrentScope)) {
-            return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope object.";
+            throw MakeException<SyntaxException>()
+                << "Failed to add an element to the current scope object." << MAKE_EXCEPTION;
         }
 
         break;
@@ -141,13 +134,17 @@ ErrorHandle closeTopScope(Enviroment& env)
             pParentValue->pushValue(pCurrentScope->value());
         } else {
             if (!pParentValue->addMember(*pCurrentScope)) {
-                return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope array because it was a index out of range.";
+                throw MakeException<SyntaxException>()
+                    << "Failed to add an element to the current scope array because it was a index out of range."
+                    << MAKE_EXCEPTION;
             }
         }
         break;
     case Value::Type::ObjectDefined:
         if (!pParentValue->addMember(*pCurrentScope)) {
-            return MakeErrorHandle(env.source.row()) << "syntax error!! Failed to add an element to the current scope object.";
+            throw MakeException<SyntaxException>()
+                << "Failed to add an element to the current scope object."
+                << MAKE_EXCEPTION;
         }
         break;
     case Value::Type::MemberDefined:
@@ -157,10 +154,10 @@ ErrorHandle closeTopScope(Enviroment& env)
         break;
     }
     default:
-        return MakeErrorHandle(env.source.row()) << "syntax error!! The current value can not have children.";
+        throw MakeException<SyntaxException>()
+            << "The current value can not have children."
+            << MAKE_EXCEPTION;
     }
-
-    return {};
 }
 
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
@@ -179,20 +176,16 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
             }
         }
 
-        return  line.incrementPos(start, [](auto line, auto p) {
-            return !isArrayElementSeparater(line.get(p)); });
+        return line.incrementPos(start, [](auto line, auto p) {
+                return !isArrayElementSeparater(line.get(p));
+            });
     };
     auto tail = getTail(line, valuePos);
 
     do {
         auto valueLine = Line(line.get(valuePos), 0, tail - valuePos);
         env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value()));
-        if (auto error = parseValue(env, valueLine)) {
-            cerr << error.message()
-                << line.string_view() << endl;
-            env.popScope();
-            return valuePos;
-        }
+        parseValue(env, valueLine);
 
         tail += ('\\' == *line.get(tail)) ? 2 : 1;
         valuePos = line.skipSpace(tail);
@@ -202,77 +195,60 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
         }
         tail = getTail(line, valuePos);
 
-        if (auto error = closeTopScope(env)) {
-            cerr << error.message() << "\n"
-                << line.string_view() << endl;
-        }
+        closeTopScope(env);
     } while (!line.isEndLine(valuePos));
     return valuePos;
 }
 
-ErrorHandle parseObjectName(std::list<boost::string_view>& out, size_t& outEnd, Enviroment& env, Line& line, size_t start)
+std::tuple<std::list<boost::string_view>, size_t> parseObjectName(Enviroment& env, Line& line, size_t start)
 {
     auto nameLine = Line(line.get(start), 0, line.length() - start);
     if ('[' != *nameLine.get(0)) {
-        return MakeErrorHandle(env.source.row())
-            << env.source.row() << ": syntax error!! The object name is not encloded in square brackets([...]).\n";
+        throw MakeException<SyntaxException>()
+            << "The object name is not encloded in square brackets([...])."
+            << MAKE_EXCEPTION;
     }
 
     // decide the value to be Object.
     auto p = nameLine.incrementPos(1, [](auto line, auto p) { return ']' != *line.get(p); });
     if (nameLine.length() <= p) {
-        return MakeErrorHandle(env.source.row())
-            << env.source.row() << ": syntax error!! The object name is not encloded in square brackets([...]).\n";
+        throw MakeException<SyntaxException>()
+            << "The object name is not encloded in square brackets([...])."
+            << MAKE_EXCEPTION;
     }
-
     nameLine.resize(1, nameLine.length()-p);
-    size_t endPos = 0;
-    auto nestName = parseName(endPos, nameLine, 0);
-    out = std::move(nestName);
-    outEnd = endPos+1 + start;
-    return {};
+    auto [nestName, endPos] = parseName(nameLine, 0);
+    endPos = endPos + 1 + start;
+    return { std::move(nestName), endPos };
 }
 
-ErrorHandle searchObjdectDefined(ObjectDefined const** ppOut, std::list<boost::string_view> const& nestName, Enviroment const& env)
+ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& nestName, Enviroment const& env)
 {
     if (1 == nestName.size()) {
         if ("Array" == *nestName.begin()) {
-            *ppOut = &Value::arrayDefined;
-            return {};
+            return &Value::arrayDefined;
         } else if ("Object" == *nestName.begin()) {
-            *ppOut = &Value::objectDefined;
-            return {};
+            return &Value::objectDefined;
         }
     }
     auto nestNameList = toStringList(nestName);
-    Value const* pValue=nullptr;
-    if (auto error = searchValue(&pValue, nestNameList, env)) {
-        return MakeErrorHandle(env.source.row())
-            << "scope searching error: Don't found ObjectDefined.\n";
-    }
-
+    Value const* pValue= searchValue(nestNameList, env);
     if (Value::Type::ObjectDefined != pValue->type) {
-        return MakeErrorHandle(env.source.row())
-            << "scope searching error: Value is not ObjectDefined.\n";
+        throw MakeException<ScopeSearchingException>()
+            << "Value is not ObjectDefined." << MAKE_EXCEPTION;
     }
-    *ppOut = &pValue->get<ObjectDefined>();
-    return {};
+    return &pValue->get<ObjectDefined>();
 }
 
-ErrorHandle parseValue(Enviroment& env, Line& valueLine)
+void parseValue(Enviroment& env, Line& valueLine)
 {
     auto start = valueLine.skipSpace(0);
     valueLine.resize(start, 0);
     if ('[' == *valueLine.get(0)) {
-        size_t p = 0;
-        std::list<boost::string_view> objectNestName;
-        if (auto error = parseObjectName(objectNestName, p, env, valueLine, 0)) {
-            return error;
-        }
-        ObjectDefined const* pObjectDefined = nullptr;
-        if (auto error = searchObjdectDefined(&pObjectDefined, objectNestName, env)) {
-            return error;
-        }
+        // parse Object
+        auto [objectNestName, p] = parseObjectName(env, valueLine, 0);
+
+        ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
         if (&Value::arrayDefined == pObjectDefined) {
             env.currentScope().value().init(Value::Type::Array);
             auto startArrayElement = valueLine.skipSpace(p + 1);
@@ -284,9 +260,11 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
         }
 
     } else if ('\\' == *valueLine.get(0)) {
+        // explicitly parse string
         env.currentScope().value() = valueLine.substr(1, valueLine.length() - 1).to_string();
 
     } else {
+        // parse string, number or reference
         auto str = valueLine.string_view().to_string();
         bool isNumber = false;
         auto num = toDouble(str, isNumber);
@@ -295,19 +273,17 @@ ErrorHandle parseValue(Enviroment& env, Line& valueLine)
         } else {
             if (isReference(str)) {
                 auto strLine = Line(&str[2], 0,str.size()-3);
-                size_t endPos;
-                auto nestName = toStringList(parseName(endPos, strLine, 0));
+                auto [nestNameView, endPos] = parseName(strLine, 0);
+                auto nestName = toStringList(nestNameView);
                 env.currentScope().value() = Reference(&env, nestName);
             } else {
                 env.currentScope().value() = str;
             }
         }
     }
-
-    return {};
 }
 
-boost::optional<boost::string_view> pickupName(Line const& line, size_t start)
+std::tuple<boost::string_view, bool> pickupName(Line const& line, size_t start)
 {
     // search including illegal characters
     auto p = line.incrementPos(start, [](auto line, auto p) {
@@ -316,9 +292,9 @@ boost::optional<boost::string_view> pickupName(Line const& line, size_t start)
     });
     auto nameStr = Line(line.get(start), 0, p - start);
     if (nameStr.find(0, [](auto line, auto p) { return !isNameChar(line.get(p)); })) {
-        return boost::none;
+        return { boost::string_view{}, false };
     }
-    return nameStr.string_view();
+    return { nameStr.string_view(), true };
 }
 
 struct INameAccessorParseTraits
@@ -373,16 +349,14 @@ struct ChildOrderAccessorParseTraits final : public INameAccessorParseTraits
     }
 };
 
-std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_t start)
+std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, size_t start)
 {
-    size_t p = start;
-    auto firstNameView = pickupName(line, p);
-    if (!firstNameView) {
-        return {};
+    auto [firstNameView, isSuccess] = pickupName(line, start);
+    if (!isSuccess) {
+        return { {}, 0 };
     }
-    p += firstNameView->length();
-    tailPos = p;
 
+    auto p = start + firstNameView.length();
     INameAccessorParseTraits const* pAccessorParser = nullptr;
     p = line.skipSpace(p);
     if (isParentOrderAccessorChar(line.get(p))) {
@@ -392,21 +366,22 @@ std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_
         // the name of the child order
         pAccessorParser = &ChildOrderAccessorParseTraits::instance();
     } else {
-        return { *firstNameView };
+        auto endPos = start + firstNameView.length();
+        return { { firstNameView }, endPos };
     }
     p = pAccessorParser->skipAccessChars(line, p);
 
     std::list<boost::string_view> result;
-    result.push_back(*firstNameView);
+    result.push_back(firstNameView);
     while (!line.isEndLine(p)) {
         p = line.skipSpace(p);
         auto debugLine = Line(line.get(p), 0, line.length() - p);
-        auto nameView = pickupName(line, p);
-        if (!nameView) {
-            return {};
+        auto [nameView, isSuccess] = pickupName(line, p);
+        if (!isSuccess) {
+            return { {}, 0 };
         }
-        pAccessorParser->push(result, *nameView);
-        p += nameView->length();
+        pAccessorParser->push(result, nameView);
+        p += nameView.length();
         p = line.skipSpace(p);
 
         if (!pAccessorParser->isAccessKeyward(line, p)) {
@@ -415,8 +390,7 @@ std::list<boost::string_view> parseName(size_t& tailPos, Line const& line, size_
         p = pAccessorParser->skipAccessChars(line, p);
     }
 
-    tailPos = p;
-    return result;
+    return { result, p };
 }
 
 OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
@@ -428,19 +402,13 @@ OperatorType parseOperator(size_t& outTailPos, Line const& line, size_t start)
     return opType;
 }
 
-ErrorHandle searchValue(Value** ppOut, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
+Value* searchValue(std::list<std::string> const& nestName, Enviroment& env, bool doGetParent)
 {
-    Value const*pValue;
-    if (auto error = searchValue(&pValue, nestName, env, doGetParent)) {
-        return error;
-    }
-    *ppOut = const_cast<Value*>(pValue);
-    return {};
+    return const_cast<Value*>(searchValue(nestName, const_cast<Enviroment const&>(env), doGetParent));
 }
 
-ErrorHandle searchValue(Value const** ppOut, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
+Value const* searchValue(std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
 {
-    assert(ppOut != nullptr);
     assert(!nestName.empty());
 
     Value const* pResult = nullptr;
@@ -453,22 +421,18 @@ ErrorHandle searchValue(Value const** ppOut, std::list<std::string> const& nestN
             break;
         }
         if (pScope->value().isExsitChild(rootName)) {
-            ErrorHandle error;
-            auto& childValue = pScope->value().getChild(rootName, error);
-            if (error) {
-                return ErrorHandle(env.source.row(), std::move(error));
-            }
+            auto& childValue = pScope->value().getChild(rootName);
             pResult = &childValue;
             break;
         }
     }
     if (nullptr == pResult) {
-        ErrorHandle error;
-        pResult = &env.externObj.getChild(rootName, error);
-        if (error) {
-            return MakeErrorHandle(env.source.row())
-                << "scope searching error!! Don't found '" << rootName << "' in enviroment.";
+        if (!env.externObj.isExsitChild(rootName)) {
+            throw MakeException<ScopeSearchingException>()
+                << "Don't found '" << rootName << "' in enviroment."
+                << MAKE_EXCEPTION;
         }
+        pResult = &env.externObj.getChild(rootName);
     }
 
     // Find a assignment destination at starting point.
@@ -479,28 +443,29 @@ ErrorHandle searchValue(Value const** ppOut, std::list<std::string> const& nestN
             --endIt;
         }
         for (; endIt != nestNameIt; ++nestNameIt) {
-            ErrorHandle error;
-            auto& childValue = pResult->getChild(*nestNameIt, error);
-            if (error) {
+            if (!pResult->isExsitChild(*nestNameIt)) {
+                // error code
+                auto it = nestName.begin();
+                auto name = *it;
+                for (++it; nestNameIt != it; ++it) {
+                    name = "." + (*it);
+                }
                 if (Value::Type::Object == pResult->type) {
-                    auto it = nestName.begin();
-                    auto name = *it;
-                    for (++it; nestNameIt != it; ++it) {
-                        name = "." + (*it);
-                    }
-                    return MakeErrorHandle(env.source.row())
-                        << error.message() << "n"
-                        << "scope searching error!! Don't found '" << *nestNameIt << "' in '" << name << "'.";
+                    throw MakeException<ScopeSearchingException>()
+                        << "Don't found '" << *nestNameIt << "' in '" << name << "'."
+                        << MAKE_EXCEPTION;
                 } else {
-                    return ErrorHandle(env.source.row(), std::move(error));
+                    throw MakeException<ScopeSearchingException>()
+                        << *nestNameIt << "' in '" << name << "' not equal Object."
+                        << MAKE_EXCEPTION;
                 }
             }
-            pResult = &childValue;
+
+            pResult = &pResult->getChild(*nestNameIt);
         }
     }
 
-    *ppOut = pResult;
-    return {};
+    return pResult;
 }
 
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
@@ -524,7 +489,7 @@ MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outTailPos, Line co
     return opType;
 }
 
-ErrorHandle expandVariable(std::string & inOutStr, Enviroment const& env)
+std::string expandVariable(std::string & inOutStr, Enviroment const& env)
 {
     auto str = inOutStr;
     size_t start = 0;
@@ -538,12 +503,9 @@ ErrorHandle expandVariable(std::string & inOutStr, Enviroment const& env)
             break;
         }
         auto strLine = Line(&str[start+2], 0, end - (start+2));
-        size_t lineEnd;
-        auto nestName = toStringList(parseName(lineEnd, strLine, 0));
-        Value const* pValue = nullptr;
-        if (auto error = searchValue(&pValue, nestName, env)) {
-            return error;
-        }
+        auto [nestNameView, linEnd] = parseName(strLine, 0);
+        auto nestName = toStringList(nestNameView);
+        Value const* pValue = searchValue(nestName, env);
         switch (pValue->type) {
         case Value::Type::String:
             str.replace(start, end - start + 1, pValue->get<Value::string>());
@@ -552,14 +514,14 @@ ErrorHandle expandVariable(std::string & inOutStr, Enviroment const& env)
             str.replace(start, end + 1, pValue->toString());
             break;
         default:
-            return MakeErrorHandle(env.source.row())
-                << "syntax error!! Don't expansion type '" << Value::toString(pValue->type) << "'.";
+            throw MakeException<SyntaxException>()
+                << "Don't expansion type '" << Value::toString(pValue->type) << "'."
+                << MAKE_EXCEPTION;
             break;
         }
     }
 
-    inOutStr = str;
-    return {};
+    return str;
 }
 
 }

@@ -43,80 +43,35 @@ Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
             line = env.source.getLine(true);
         }
         isGetLine = true;
-        auto workLine = line;
+        try {
+            auto workLine = line;
 
-        // There is a possibility that The current mode may be discarded
-        //   due to such reasons as mode switching.
-        // For this reason, it holds the current mode as a local variable.
-        auto pMode = env.currentMode();
-        auto result = pMode->parse(env, workLine);
-        if (IParseMode::Result::Redo == result) {
-            isGetLine = false;
+            // There is a possibility that The current mode may be discarded
+            //   due to such reasons as mode switching.
+            // For this reason, it holds the current mode as a local variable.
+            auto pMode = env.currentMode();
+            auto result = pMode->parse(env, workLine);
+            if (IParseMode::Result::Redo == result) {
+                isGetLine = false;
+            }
+
+        } catch (ParserException& e) {
+            cerr << e.what() << "\n"
+                << "line=" << env.source.row() << " : " << line.string_view() << endl;
+            isGetLine = true;
         }
     }
-
-    if (2 <= env.scopeStack.size()) {
-        while (2 <=  env.scopeStack.size()) {
-            if (auto error = closeTopScope(env)) {
-                cerr << error.message() << "\n"
-                    << line.string_view() << endl;
+    try {
+        if (2 <= env.scopeStack.size()) {
+            while (2 <=  env.scopeStack.size()) {
+                closeTopScope(env);
             }
         }
+    } catch (ParserException& e) {
+        cerr << env.source.row() << ": " << e.what() << "\n"
+            << line.string_view() << endl;
     }
 
-    //auto& object = env.currentScope().value().get<Value::object>();
-    //cout << "member count=" << object.members.size() << endl;
-    //for (auto& [name, value] : object.members) {
-    //    cout << "Type of " << name << " is " << Value::toString(value.type) << ":";
-    //    switch (value.type) {
-    //    case Value::Type::String: cout << "'" << value.get<Value::string>() << "'" << endl; break;
-    //    case Value::Type::Number: cout << value.get<Value::number>() << endl;  break;
-    //    case Value::Type::Array:
-    //        cout << endl;
-    //        for (auto& element : value.get<Value::array>()) {
-    //            cout << "  " << "Type is " << Value::toString(element.type);
-    //            if (Value::Type::String == element.type) {
-    //                cout << ": '" << element.toString() << "'"<< endl;
-    //            } else {
-    //                cout << ": " << element.toString() << endl;
-    //            }
-    //        }
-    //        cout << endl;
-    //        break;
-    //    case Value::Type::Object:
-    //        cout << endl;
-    //        for (auto& [childName, childValue] : value.get<Value::object>().members) {
-    //            cout << "  " << "Type of " << childName << " is " << Value::toString(childValue.type) << ":";
-    //            switch (childValue.type) {
-    //            case Value::Type::String: cout << "'" << childValue.get<Value::string>() << "'" << endl; break;
-    //            case Value::Type::Number: cout << childValue.get<Value::number>() << endl; break;
-    //            default:
-    //                cout << childValue.toString() << endl;
-    //            }
-    //        }
-    //        cout << endl;
-    //        break;
-    //    case Value::Type::ObjectDefined:
-    //        cout << endl;
-    //        for (auto&[childName, childValue] : value.get<ObjectDefined>().members) {
-    //            cout << "  " << "Member Type of " << childName << " is " << Value::toString(childValue.type);
-    //            if (Value::Type::None != childValue.defaultValue.type) {
-    //                cout << " by default=" << childValue.defaultValue.toString();
-    //            }
-    //            cout << endl;
-    //        }
-    //        break;
-    //    default:
-    //        cout << "(unknown)" << endl;
-    //        break;
-    //    }
-    //}
-    //ErrorHandle error;
-    //auto& arr3 = env.currentScope().value().getChild("array3", error).get<Value::array>();
-    //auto& elements = arr3.at(3).get<Value::array>();
-    //for (auto& e : elements) {
-    //    cout << e.toString() << endl;
-    //}
     return std::move(env.currentScope().value());
 }
 
@@ -189,20 +144,22 @@ void confirmValueInInteractive(Value const& rootValue)
             showValue(rootValue);
             continue;
         }
-        size_t endPos;
-        auto line = Line(nestName.c_str(), 0, nestName.size());
-        auto nameList = parseName(endPos, line, 0);
 
-        ErrorHandle error;
+        auto line = Line(nestName.c_str(), 0, nestName.size());
+        auto [nameList, endPos] = parseName(line, 0);
+
+        bool doFound = true;
         Value const* pValue = &rootValue;
-        for (auto&& name : nameList) {
-            auto& child = pValue->getChild(name.to_string(), error);
-            if (error) {
+        for (auto&& nameView : nameList) {
+            auto name = nameView.to_string();
+            if (!pValue->isExsitChild(name)) {
+                doFound = false;
                 break;
             }
+            auto& child = pValue->getChild(name);
             pValue = &child;
         }
-        if (error) {
+        if (!doFound) {
             cout << "!!error!! Don't found '" << nestName << "'" << endl;
             if (nullptr != pValue) {
                 cout << "show parent value" << endl;

@@ -22,7 +22,11 @@ struct NoneValue
 struct MemberDefined;
 struct ObjectDefined
 {
+    std::string name;
     std::unordered_map<std::string, MemberDefined> members;
+
+    ObjectDefined();
+    ObjectDefined(std::string const& name);
 };
 
 struct Value;
@@ -33,7 +37,7 @@ struct Object
 
     Object(ObjectDefined const* pDefined);
 
-    ErrorHandle applyObjectDefined();
+    bool applyObjectDefined();
 
 };
 
@@ -134,8 +138,8 @@ struct Value
 
     bool isExsitChild(std::string const& name)const;
 
-    Value& getChild(std::string const& name, ErrorHandle& error);
-    Value const& getChild(std::string const& name, ErrorHandle& error)const;
+    Value& getChild(std::string const& name);
+    Value const& getChild(std::string const& name)const;
 };
 
 struct MemberDefined

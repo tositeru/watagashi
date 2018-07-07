@@ -9,6 +9,8 @@
 namespace parser
 {
 
+MakeExceptionCommand const MAKE_EXCEPTION;
+
 inline static char const COMMENT_CHAR = '#';
 
 bool isCommentChar(char const* c)
@@ -120,6 +122,17 @@ double toDouble(std::string const& str, bool& isSuccess)
         isSuccess = isNumber;
     }
     return num;
+}
+
+std::string toNameString(std::list<std::string> const& nestName)
+{
+    std::string fullname = "";
+    std::string accesser = "";
+    for (auto&& name : nestName) {
+        fullname += accesser + name;
+        accesser = ".";
+    }
+    return fullname;
 }
 
 bool isReference(std::string const& str)

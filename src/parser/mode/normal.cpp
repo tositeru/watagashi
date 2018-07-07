@@ -23,47 +23,35 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
         return Result::Next;
     }
 
-    int level;
-    if (auto error = evalIndent(env, line, level)) {
-        cerr << error.message() << endl;
-        return Result::Next;
-    }
-
+    int level = evalIndent(env, line);
     if (line.length() <= 0) {
         return Result::Next;
     }
 
     int resultCompared = env.compareIndentLevel(level);
     if ( 0 < resultCompared) {
-        cerr << env.source.row() << ": syntax error!! An indent above current scope depth is described.\n"
-            << line.string_view() << endl;
-        return Result::Next;
+        throw MakeException<SyntaxException>()
+            << "An indent above current scope depth is described." << MAKE_EXCEPTION;
     }
 
     if (resultCompared < 0) {
         while (0 != env.compareIndentLevel(level)) {
             // close top scope.
-            if (auto error = closeTopScope(env)) {
-                cerr << error.message() << "\n"
-                    << line.string_view() << endl;
-            }
+            closeTopScope(env);
         }
     }
 
     if (Value::Type::Object == env.currentScope().valueType()) {
-        size_t p = 0;
-        auto nestNames = parseName(p, line, 0);
+        auto [nestNames, p] = parseName(line, 0);
         if (nestNames.empty()) {
-            cerr << env.source.row() << ": syntax error!! found invalid character.\n"
-                << line.string_view() << endl;
-            return Result::Next;
+            throw MakeException<SyntaxException>()
+                << "found invalid character." << MAKE_EXCEPTION;
         }
 
         auto opType = parseOperator(p, line, p);
         if (OperatorType::Unknown == opType) {
-            cerr << env.source.row() << ": syntax error!! found unknown operater.\n"
-                << line.string_view() << endl;
-            return Result::Next;
+            throw MakeException<SyntaxException>()
+                << "found unknown operater." << MAKE_EXCEPTION;
         }
 
         // parse value
@@ -73,66 +61,38 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
             p = parseArrayElement(env, line, p);
         } else if (OperatorType::Copy == opType) {
             env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
-            decltype(p) tail = 0;
-            auto srcNestNameView = parseName(tail, line, p);
+            auto [srcNestNameView, endPos] = parseName(line, p);
             if (srcNestNameView.empty()) {
-                cerr << env.source.row() << ": syntax error!! found invalid character in source variable.\n"
-                    << line.string_view() << endl;
-                return Result::Next;
+                throw MakeException<SyntaxException>()
+                    << "found invalid character in source variable." << MAKE_EXCEPTION;
             }
             std::list<std::string> srcNestName = toStringList(srcNestNameView);
-            Value* pValue = nullptr;
-            if (auto error = searchValue(&pValue, srcNestName, env)) {
-                cerr << error.message()
-                    << line.string_view() << endl;
-                return Result::Next;
-            }
+            Value* pValue = searchValue(srcNestName, env);
             env.currentScope().value() = *pValue;
         } else if (OperatorType::PushBack == opType) {
             // push reference scope
             std::list<std::string> targetNestName = toStringList(nestNames);
-            Value* pValue = nullptr;
-            if (auto error = searchValue(&pValue, targetNestName, env)) {
-                cerr << error.message()
-                    << "syntax error!! Don't found the push_back target array.\n"
-                    << line.string_view() << endl;
-                return Result::Next;
-            }
+            Value* pValue = searchValue(targetNestName, env);
             if (Value::Type::Array != pValue->type) {
-                ErrorHandle error = MakeErrorHandle(env.source.row()) << "syntax error!! An attempt was made to add with a value other than an array.";
-                cerr << error.message() << endl;
-                return Result::Next;
+                throw MakeException<SyntaxException>() << "An attempt was made to add with a value other than an array."
+                    << MAKE_EXCEPTION;
             }
             env.pushScope(std::make_shared<ReferenceScope>(targetNestName, *pValue));
 
             // push value scope of anonymous
             env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value().init(Value::Type::None)));
             auto valueLine = Line(line.get(p), 0, line.length() - p);
-            if (auto error = parseValue(env, valueLine)) {
-                cerr << error.message()
-                    << line.string_view() << endl;
-                env.popScope();
-                return Result::Next;
-            }
+            parseValue(env, valueLine);
 
         } else if (OperatorType::Remove == opType) {
             //TODO?
 
         } else if(OperatorType::Extend == opType) {
             auto objectNameLine = Line(line.get(p), 0, line.length() - p);
-            std::list<boost::string_view> objectNestName;
-            if (auto error = parseObjectName(objectNestName, p, env, line, p)) {
-                cerr << error.message()
-                    << line.string_view() << endl;
-                return Result::Next;
-            }
+            auto[objectNestName, endPos] = parseObjectName(env, line, p);
+
             //TODO seach Objectdefined from env and set it to new scope 
-            ObjectDefined const* pObjectDefined = nullptr;
-            if (auto error = searchObjdectDefined(&pObjectDefined, objectNestName, env)) {
-                cerr << error.message()
-                    << line.string_view() << endl;
-                return Result::Next;
-            }
+            ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
 
             Value objDefiend;
             objDefiend = *pObjectDefined;
@@ -142,12 +102,7 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
         } else {
             env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
             auto valueLine = Line(line.get(p), 0, line.length() - p);
-            if (auto error = parseValue(env, valueLine)) {
-                cerr << error.message()
-                    << line.string_view() << endl;
-                env.popScope();
-                return Result::Next;
-            }
+            parseValue(env, valueLine);
         }
 
         //cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"

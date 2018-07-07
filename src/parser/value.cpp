@@ -1,5 +1,6 @@
 #include "value.h"
 
+#include <iostream>
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
 
@@ -8,8 +9,22 @@
 #include "scope.h"
 #include "parseMode.h"
 
+using namespace std;
+
 namespace parser
 {
+//-----------------------------------------------------------------------
+//
+//  struct ObjectDefined
+//
+//-----------------------------------------------------------------------
+ObjectDefined::ObjectDefined()
+{}
+
+ObjectDefined::ObjectDefined(std::string const& name)
+    : name(name)
+{}
+
 //-----------------------------------------------------------------------
 //
 //  struct Object
@@ -20,21 +35,23 @@ Object::Object(ObjectDefined const* pDefined)
 {
 }
 
-ErrorHandle Object::applyObjectDefined()
+bool Object::applyObjectDefined()
 {
-    MakeErrorHandle error(0);
     for (auto&& [name, memberDefined] : this->pDefined->members) {
         auto it = this->members.find(name);
         if (this->members.end() != it) {
             continue;
         }
         if (Value::Type::None == memberDefined.defaultValue.type) {
-            error << " define object error: must set value to '" << name << "'.\n";
+            cerr << "defined object error: '"
+                << name << "' in '"
+                << (this->pDefined->name.empty() ? "(Anonymous)" : this->pDefined->name)
+                << "' must set value." << endl;
         } else {
             this->members.insert({name, memberDefined.defaultValue });
         }
     }
-    return error;
+    return true;
 }
 
 //-----------------------------------------------------------------------
@@ -66,12 +83,7 @@ Reference::Reference(Enviroment const* pEnv, std::list<std::string> const& nestN
 
 Value const* Reference::ref()const
 {
-    Value const* pValue;
-    if (auto error = searchValue(&pValue, this->nestName, *this->pEnv)) {
-        AWESOME_THROW(std::runtime_error)
-            << "invalid operation. invalid reference value";
-    }
-    return pValue;
+    return searchValue(this->nestName, *this->pEnv);
 }
 
 //-----------------------------------------------------------------------
@@ -509,13 +521,13 @@ bool Value::isExsitChild(std::string const& name)const
     return false;
 }
 
-Value& Value::getChild(std::string const& name, ErrorHandle& error)
+Value& Value::getChild(std::string const& name)
 {
     auto const* constThis = this;
-    return const_cast<Value&>(constThis->getChild(name, error));
+    return const_cast<Value&>(constThis->getChild(name));
 }
 
-Value const& Value::getChild(std::string const& name, ErrorHandle& error)const
+Value const& Value::getChild(std::string const& name)const
 {
     switch (this->type) {
     case Value::Type::Object:
@@ -523,8 +535,8 @@ Value const& Value::getChild(std::string const& name, ErrorHandle& error)const
         auto& obj = this->get<Value::object>();
         auto it = obj.members.find(name);
         if (obj.members.end() == it) {
-            error = MakeErrorHandle(0)
-                <<"syntax error!! Don't found '" << name << "' child.";
+            AWESOME_THROW(std::invalid_argument)
+                << "Don't found '" << name << "' child.";
             break;
         }
         return it->second;
@@ -535,13 +547,13 @@ Value const& Value::getChild(std::string const& name, ErrorHandle& error)const
         bool isNumber = false;
         auto index = static_cast<int>(toDouble(name, isNumber));
         if (!isNumber) {
-            error = MakeErrorHandle(0)
-                << "syntax error!! Use index(" << index << ") outside the array range. (array size=" << this->get<Value::array>().size() << ")";
-            return Value::none;
+            AWESOME_THROW(std::invalid_argument)
+                << "Use index(" << index << ") outside the array range. (array size=" << this->get<Value::array>().size() << ")";
+            break;
         }
         auto& arr = this->get<Value::array>();
         if (arr.size() <= index) {
-            error = MakeErrorHandle(0)
+            AWESOME_THROW(std::invalid_argument)
                 << "syntax error!! Use index(" << index << ") outside the array range. (array size=" << this->get<Value::array>().size() << ")";
         }
         return arr[index];
