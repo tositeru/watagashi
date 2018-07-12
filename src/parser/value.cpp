@@ -135,6 +135,12 @@ Value::Value(NoneValue const& right)
     , pData(std::make_unique<InnerData>(right))
 {}
 
+Value::Value(bool const& right)
+    : type(Type::Bool)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+
 Value::Value(string const& right)
     : type(Type::String)
     , pData(std::make_unique<InnerData>(right))
@@ -172,6 +178,11 @@ Value::Value(Reference const& right)
 
 Value::Value(NoneValue && right)
     : type(Type::None)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(bool && right)
+    : type(Type::Bool)
     , pData(std::make_unique<InnerData>(std::move(right)))
 {}
 
@@ -214,6 +225,7 @@ Value& Value::init(Type type_)
 {
     switch (type_) {
     case Type::None:   this->pData->data = NoneValue(); break;
+    case Type::Bool:   this->pData->data = false; break;
     case Type::String: this->pData->data = ""; break;
     case Type::Number: this->pData->data = 0.0; break;
     case Type::Array:  this->pData->data = array{}; break;
@@ -224,6 +236,63 @@ Value& Value::init(Type type_)
     }
     this->type = type_;
     return *this;
+}
+
+bool Value::operator==(Value const& right)const
+{
+    if (this->type != right.type)
+        return false;
+    switch (this->type) {
+    case Type::String: return this->get<Value::string>() == right.get<Value::string>();
+    case Type::Number: return this->get<Value::number>() == right.get<Value::number>();
+    default:
+        AWESOME_THROW(invalid_argument)
+            << "It can not comapre except string or number type...";
+    }
+    return false;
+}
+
+bool Value::operator!=(Value const& right)const
+{
+    return !(*this == right);
+}
+
+bool Value::operator<(Value const& right)const
+{
+    if (this->type != right.type)
+        return false;
+    switch (this->type) {
+    case Type::String: return this->get<Value::string>() < right.get<Value::string>();
+    case Type::Number: return this->get<Value::number>() < right.get<Value::number>();
+    default:
+        AWESOME_THROW(invalid_argument)
+            << "It can not comapre except string or number type...";
+    }
+    return false;
+}
+
+bool Value::operator<=(Value const& right)const
+{
+    if (this->type != right.type)
+        return false;
+    switch (this->type) {
+    case Type::String: return this->get<Value::string>() <= right.get<Value::string>();
+    case Type::Number: return this->get<Value::number>() <= right.get<Value::number>();
+    default:
+        AWESOME_THROW(invalid_argument)
+            << "It can not comapre except string or number type...";
+    }
+    return false;
+}
+
+bool Value::operator>(Value const& right)const
+{
+    return !(*this < right) && *this != right;
+}
+
+bool Value::operator>=(Value const& right)const
+{
+    return !(*this < right) && *this == right;
 }
 
 class PushValue : public boost::static_visitor<void>
@@ -385,6 +454,7 @@ void Value::appendStr(boost::string_view const& strView)
 using ValueTypeBimap = boost::bimap<boost::string_view, Value::Type>;
 static const ValueTypeBimap valueTypeBimap = boost::assign::list_of<ValueTypeBimap::relation>
     ("none", Value::Type::None)
+    ("bool", Value::Type::Bool)
     ("string", Value::Type::String)
     ("number", Value::Type::Number)
     ("array", Value::Type::Array)
@@ -414,6 +484,11 @@ public:
     std::string operator()(NoneValue const&)const
     {
         return "[None]";
+    }
+
+    std::string operator()(bool const& b)const
+    {
+        return (b ? "true"s : "false"s);
     }
 
     std::string operator()(Value::string const& str)const

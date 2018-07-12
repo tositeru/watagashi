@@ -65,7 +65,6 @@ int main(int argn, char** args)
             cerr << "unknwon task type..." << endl;
             return 1;
         }
-
     } catch (...) {
         ExceptionHandlerSetter::terminate();
         return 1;
@@ -137,7 +136,7 @@ data::Project createProject(parser::Value const& configData, watagashi::ProgramO
 
     data::Project project;
     project.name = projectName;
-    project.rootDirectory = options.rootDirectories; // TODO
+    project.rootDirectory = options.rootDirectories;
     project.type = data::Project::toType(projectValue.getChild("type").get<Value::string>());
     project.compiler = projectValue.getChild("compiler").get<Value::string>();
     project.outputName = getString("outputName", project.name, projectValue);

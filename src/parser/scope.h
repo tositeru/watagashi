@@ -10,6 +10,8 @@
 namespace parser
 {
 
+class Line;
+
 class IScope
 {
 public:
@@ -17,6 +19,7 @@ public:
     {
         Normal,
         Reference,
+        Boolean,
     };
 
 public:
@@ -36,42 +39,16 @@ class NormalScope : public IScope
 
 public:
     NormalScope()=default;
-    NormalScope(std::list<std::string> const& nestName, Value const& value)
-        : mNestName(nestName)
-        , mValue(value)
-    {}
-    NormalScope(std::list<std::string> && nestName, Value && value)
-        : mNestName(std::move(nestName))
-        , mValue(std::move(value))
-    {}
-    NormalScope(std::list<boost::string_view> const& nestName, Value const& value)
-        : mNestName()
-        , mValue(value)
-    {
-        this->mNestName = toStringList(nestName);
-    }
+    NormalScope(std::list<std::string> const& nestName, Value const& value);
+    NormalScope(std::list<std::string> && nestName, Value && value);
+    NormalScope(std::list<boost::string_view> const& nestName, Value const& value);
 
-    Type type()const override{ return Type::Normal; }
+    Type type()const override;
 
-    std::list<std::string> const& nestName()const override
-    {
-        return this->mNestName;
-    }
-
-    Value& value() override
-    {
-        return this->mValue;
-    }
-
-    Value const& value()const override
-    {
-        return this->mValue;
-    }
-
-    Value::Type valueType()const override
-    {
-        return this->mValue.type;
-    }
+    std::list<std::string> const& nestName()const override;
+    Value& value() override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
 };
 
 class ReferenceScope : public IScope
@@ -79,38 +56,40 @@ class ReferenceScope : public IScope
     std::list<std::string> mNestName;
     Value& mRefValue;
 public:
-    ReferenceScope(std::list<std::string> const& nestName, Value& value)
-        : mNestName(nestName)
-        , mRefValue(value)
-    {}
-    ReferenceScope(std::list<boost::string_view> const& nestName, Value & value)
-        : mNestName()
-        , mRefValue(value)
-    {
-        this->mNestName = toStringList(nestName);
-    }
+    ReferenceScope(std::list<std::string> const& nestName, Value& value);
+    ReferenceScope(std::list<boost::string_view> const& nestName, Value & value);
+    Type type()const override;
 
-    Type type()const override { return Type::Reference; }
+    std::list<std::string> const& nestName()const override;
+    Value& value() override;
+    Value const& value()const override;
+    Value::Type valueType()const;
+};
 
-    std::list<std::string> const& nestName()const override
-    {
-        return this->mNestName;
-    }
+class BooleanScope : public IScope
+{
+    std::list<std::string> mNestName;
+    Value mValue;
+    LogicOperator mLogicOp;
+    bool mDoSkip;
+    int mTrueCount;
+    int mFalseCount;
+    bool mIsInReverse;
 
-    Value& value() override
-    {
-        return this->mRefValue;
-    }
+public:
+    BooleanScope(std::list<std::string> const& nestName);
+    BooleanScope(std::list<boost::string_view> const& nestName);
 
-    Value const& value()const override
-    {
-        return this->mRefValue;
-    }
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value& value() override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
 
-    Value::Type valueType()const override
-    {
-        return this->value().type;
-    }
+    void setLogicOperator(LogicOperator op);
+    bool doEvalValue()const;
+    void tally(bool b);
+    bool result()const;
 };
 
 }

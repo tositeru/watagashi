@@ -54,6 +54,7 @@ struct Value
     enum class Type
     {
         None,
+        Bool,
         String,
         Number,
         Array,
@@ -87,6 +88,7 @@ struct Value
     ~Value();
 
     Value(NoneValue const& right);
+    Value(bool const& right);
     Value(string const& right);
     Value(number const& right);
     Value(array const& right);
@@ -96,6 +98,7 @@ struct Value
     Value(Reference const& right);
 
     Value(NoneValue && right);
+    Value(bool && right);
     Value(string && right);
     Value(number && right);
     Value(array && right);
@@ -121,6 +124,13 @@ struct Value
         *this = std::move(tmp);
         return *this;
     }
+
+    bool operator==(Value const& right)const;
+    bool operator!=(Value const& right)const;
+    bool operator<(Value const& right)const;
+    bool operator<=(Value const& right)const;
+    bool operator>(Value const& right)const;
+    bool operator>=(Value const& right)const;
 
     void pushValue(Value const& pushValue);
     bool addMember(IScope const& member);
@@ -159,6 +169,7 @@ struct Value::InnerData
     // TODO use std::variant after all
     boost::variant<
         NoneValue,
+        bool,
         string,
         number,
         array,

@@ -57,7 +57,10 @@ target_sources(watagashi
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/multiLineComment.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/objectDefined.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/objectDefined.cpp"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/boolean.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/boolean.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.cpp"
 )

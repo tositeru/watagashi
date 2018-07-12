@@ -10,6 +10,7 @@
 
 #include "multiLineComment.h"
 #include "objectDefined.h"
+#include "boolean.h"
 
 using namespace std;
 
@@ -18,29 +19,6 @@ namespace parser
 
 IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
 {
-    auto commentType = evalComment(env, line);
-    if (CommentType::MultiLine == commentType) {
-        return Result::Next;
-    }
-
-    int level = evalIndent(env, line);
-    if (line.length() <= 0) {
-        return Result::Next;
-    }
-
-    int resultCompared = env.compareIndentLevel(level);
-    if ( 0 < resultCompared) {
-        throw MakeException<SyntaxException>()
-            << "An indent above current scope depth is described." << MAKE_EXCEPTION;
-    }
-
-    if (resultCompared < 0) {
-        while (0 != env.compareIndentLevel(level)) {
-            // close top scope.
-            closeTopScope(env);
-        }
-    }
-
     if (Value::Type::Object == env.currentScope().valueType()) {
         auto [nestNames, p] = parseName(line, 0);
         if (nestNames.empty()) {
@@ -56,9 +34,23 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
 
         // parse value
         p = line.skipSpace(p);
-        if (OperatorType::Are == opType) {
+        if (OperatorType::Is == opType) {
+            env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
+            auto valueLine = Line(line.get(p), 0, line.length() - p);
+            parseValue(env, valueLine);
+
+        } else if (OperatorType::Are == opType) {
             env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::Array)));
             p = parseArrayElement(env, line, p);
+
+        } else if(OperatorType::Judge == opType) {
+            //skip member name and operator in the line so that BooleanParseMode does not parse them.
+            line.resize(p, 0);
+            env.pushScope(std::make_shared<BooleanScope>(nestNames));
+            env.pushMode(std::make_shared<BooleanParseMode>());
+            auto pMode = env.currentMode();
+            return pMode->parse(env, line);
+
         } else if (OperatorType::Copy == opType) {
             env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
             auto [srcNestNameView, endPos] = parseName(line, p);
@@ -67,8 +59,9 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
                     << "found invalid character in source variable." << MAKE_EXCEPTION;
             }
             std::list<std::string> srcNestName = toStringList(srcNestNameView);
-            Value* pValue = searchValue(srcNestName, env);
+            Value const* pValue = searchValue(srcNestName, env);
             env.currentScope().value() = *pValue;
+
         } else if (OperatorType::PushBack == opType) {
             // push reference scope
             std::list<std::string> targetNestName = toStringList(nestNames);
@@ -91,7 +84,6 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
             auto objectNameLine = Line(line.get(p), 0, line.length() - p);
             auto[objectNestName, endPos] = parseObjectName(env, line, p);
 
-            //TODO seach Objectdefined from env and set it to new scope 
             ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
 
             Value objDefiend;
@@ -100,9 +92,8 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
             env.pushMode(std::make_shared<ObjectDefinedParseMode>());
 
         } else {
-            env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
-            auto valueLine = Line(line.get(p), 0, line.length() - p);
-            parseValue(env, valueLine);
+            throw MakeException<SyntaxException>()
+                << "Unknown operator type..." << MAKE_EXCEPTION;
         }
 
         //cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
@@ -127,7 +118,7 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
         cout << env.source.row() << "," << env.indent.currentLevel() << "," << env.scopeStack.size() << ":"
             << Value::toString(env.currentScope().valueType()) << endl;
     }
-    return Result::Next;
+    return Result::Continue;
 }
 
 }

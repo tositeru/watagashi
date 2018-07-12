@@ -12,33 +12,6 @@ namespace parser
 
 IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
 {
-    auto commentType = evalComment(env, line);
-    if (CommentType::MultiLine == commentType) {
-        return Result::Next;
-    }
-
-    int level = evalIndent(env, line);
-
-    if (line.length() <= 0) {
-        return Result::Next;
-    }
-
-    int resultCompared = env.compareIndentLevel(level);
-    if (0 < resultCompared) {
-        throw MakeException<SyntaxException>()
-            << "An indent above current scope depth is described." << MAKE_EXCEPTION;
-    }
-
-    if (resultCompared < 0) {
-        while (0 != env.compareIndentLevel(level)) {
-            // close top scope.
-            closeTopScope(env);
-        }
-        if (env.currentMode().get() != this) {
-            return Result::Redo;
-        }
-    }
-
     if (Value::Type::ObjectDefined == env.currentScope().valueType()) {
         auto [nestNames, p] = parseName(line, 0);
         if (nestNames.empty()) {
@@ -70,7 +43,7 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
         env.pushScope(std::make_shared<NormalScope>(std::move(nestNames), std::move(memberDefiend)));
         p = line.skipSpace(p);
         if (line.isEndLine(p)) {
-            return Result::Next;
+            return Result::Continue;
         }
 
         // parse default value
@@ -87,7 +60,7 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
             env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, std::move(initValue)));
         }
         if (line.isEndLine(p)) {
-            return Result::Next;
+            return Result::Continue;
         }
 
         if (Value::Type::Array == valueType) {
@@ -113,7 +86,7 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
         env.currentScope().value() = str;
     }
 
-    return Result::Next;
+    return Result::Continue;
 }
 
 }

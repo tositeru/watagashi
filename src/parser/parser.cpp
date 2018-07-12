@@ -50,13 +50,34 @@ Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
             //   due to such reasons as mode switching.
             // For this reason, it holds the current mode as a local variable.
             auto pMode = env.currentMode();
-            auto result = pMode->parse(env, workLine);
-            if (IParseMode::Result::Redo == result) {
-                isGetLine = false;
+            switch (pMode->preprocess(env, workLine)) {
+            case IParseMode::Result::NextLine:  isGetLine = true;  continue;
+            case IParseMode::Result::Redo:      isGetLine = false;  continue;
+            default: break;
+            }
+
+            // the code below is necessary because it may change the state of the mode stack in preprocessing.
+            pMode = env.currentMode();
+            switch (pMode->parse(env, workLine)) {
+            case IParseMode::Result::NextLine:  isGetLine = true;  continue;
+            case IParseMode::Result::Redo:      isGetLine = false;  continue;
+            default: break;
             }
 
         } catch (ParserException& e) {
             cerr << e.what() << "\n"
+                << "line=" << env.source.row() << " : " << line.string_view() << endl;
+            isGetLine = true;
+        } catch(boost::exception& e) {
+            if (ParserException const* p = dynamic_cast<ParserException const *>(&e)) {
+                ExceptionHandlerSetter::handleBoostException(e);
+                cerr << "line=" << env.source.row() << " : " << line.string_view() << endl;
+            } else{
+                ExceptionHandlerSetter::handleBoostException(e);
+            }
+            isGetLine = true;
+        } catch (...) {
+            cerr << "occur unknown error... \n"
                 << "line=" << env.source.row() << " : " << line.string_view() << endl;
             isGetLine = true;
         }
@@ -78,8 +99,9 @@ Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
 void showValue(Value const& value)
 {
     switch (value.type) {
-    case Value::Type::String: cout << "String: '" << value.get<Value::string>() << "'" << endl; break;
-    case Value::Type::Number: cout << "Number: " << value.get<Value::number>() << endl; break;
+    case Value::Type::Bool:     cout << "Bool: " << value.toString() << endl; break;
+    case Value::Type::String:   cout << "String: '" << value.get<Value::string>() << "'" << endl; break;
+    case Value::Type::Number:   cout << "Number: " << value.get<Value::number>() << endl; break;
     case Value::Type::Array:
     {
         auto& arr = value.get<Value::array>();

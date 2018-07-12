@@ -11,6 +11,15 @@ namespace parser
 std::list<std::string> toStringList(std::list<boost::string_view> const& list);
 double toDouble(std::string const& str, bool& isSuccess);
 std::string toNameString(std::list<std::string> const& nestName);
+std::string toNameString(std::list<boost::string_view> const& nestName);
+
+bool isSpace(char const* c);
+bool isNameChar(char const* c);
+bool isParentOrderAccessorChar(char const* c);
+bool isChildOrderAccessorString(boost::string_view const& str);
+bool isArrayElementSeparater(char const* c);
+bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
+bool isReference(std::string const& str);
 
 enum class CommentType
 {
@@ -26,6 +35,7 @@ enum class OperatorType
     Unknown,
     Is,
     Are,
+    Judge,
     Copy,
     Extend,
     PushBack,
@@ -43,88 +53,28 @@ enum class MemberDefinedOperatorType
 MemberDefinedOperatorType toMemberDefinedOperatorType(boost::string_view const& str);
 boost::string_view const toString(MemberDefinedOperatorType type);
 
-bool isSpace(char const* c);
-bool isNameChar(char const* c);
-bool isParentOrderAccessorChar(char const* c);
-bool isChildOrderAccessorString(boost::string_view const& str);
-bool isArrayElementSeparater(char const* c);
-bool isExplicitStringArrayElementSeparater(boost::string_view const& str);
-bool isReference(std::string const& str);
+enum class CompareOperator
+{
+    Unknown,
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual
+};
+CompareOperator toCompareOperatorType(boost::string_view const& str);
+boost::string_view const toString(CompareOperator type);
 
-//class ErrorHandle
-//{
-//private:
-//    friend class MakeErrorHandle;
-//    explicit ErrorHandle(size_t row, std::string&& message)
-//        : mRow(row)
-//        , mMessage(message)
-//    {}
-//
-//public:
-//    ErrorHandle(ErrorHandle const&) = default;
-//    ErrorHandle& operator=(ErrorHandle const&) = default;
-//    ErrorHandle(ErrorHandle &&) = default;
-//    ErrorHandle& operator=(ErrorHandle &&) = default;
-//
-//    ErrorHandle(size_t row, ErrorHandle && right)
-//        : mRow(row)
-//        , mMessage(std::move(right.mMessage))
-//    {}
-//
-//    ErrorHandle()
-//        : mRow(static_cast<size_t>(-1))
-//        , mMessage()
-//    {}
-//
-//    explicit operator bool() const
-//    {
-//        return !this->mMessage.empty();
-//    }
-//
-//    size_t row()const { return this->mRow; }
-//    std::string message()const {
-//        if (0 != this->mRow) {
-//            return std::to_string(this->mRow) + ": " + this->mMessage;
-//        } else {
-//            return this->mMessage;
-//        }
-//    }
-//
-//private:
-//    size_t mRow;
-//    std::string mMessage;
-//};
-//
-//class MakeErrorHandle
-//{
-//public:
-//    explicit MakeErrorHandle(size_t row)
-//        : mRow(row)
-//    {}
-//
-//    operator ErrorHandle() const
-//    {
-//        return ErrorHandle(this->mRow, this->mMessage.str());
-//    }
-//
-//    template<typename U>
-//    MakeErrorHandle& operator<<(U &&x)
-//    {
-//        this->mMessage << std::forward<U>(x);
-//        return *this;
-//    }
-//
-//    template<typename U>
-//    MakeErrorHandle& operator<<(U const&x)
-//    {
-//        this->mMessage << x;
-//        return *this;
-//    }
-//
-//private:
-//    size_t mRow;
-//    std::stringstream mMessage;
-//};
+enum class LogicOperator
+{
+    Unknown,
+    And,
+    Or,
+    Continue,
+};
+LogicOperator toLogicOperatorType(boost::string_view const& str);
+boost::string_view const toString(LogicOperator type);
 
 struct MakeExceptionCommand {};
 
@@ -210,6 +160,15 @@ class DefinedObjectException : public ParserException
 public:
     DefinedObjectException(std::string const& message)
         : ParserException("!!defined object error!! " + message)
+    {}
+
+};
+
+class BooleanException : public ParserException
+{
+public:
+    BooleanException(std::string const& message)
+        : ParserException("!!boolean error!! " + message)
     {}
 
 };

@@ -25,7 +25,12 @@ IParseMode::Result MultiLineCommentParseMode::parse(Enviroment& parser, Line& li
     if (count == this->mKeywardCount) {
         parser.popMode();
     }
-    return Result::Next;
+    return Result::Continue;
+}
+
+IParseMode::Result MultiLineCommentParseMode::preprocess(Enviroment& env, Line& line)
+{
+    return Result::Continue;
 }
 
 }

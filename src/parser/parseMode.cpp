@@ -15,6 +15,36 @@ using namespace std;
 namespace parser
 {
 
+IParseMode::Result IParseMode::preprocess(Enviroment& env, Line& line)
+{
+    auto commentType = evalComment(env, line);
+    if (CommentType::MultiLine == commentType) {
+        return Result::NextLine;
+    }
+
+    int level = evalIndent(env, line);
+    if (line.length() <= 0) {
+        return Result::NextLine;
+    }
+
+    int resultCompared = env.compareIndentLevel(level);
+    if (0 < resultCompared) {
+        throw MakeException<SyntaxException>()
+            << "An indent above current scope depth is described." << MAKE_EXCEPTION;
+    }
+
+    if (resultCompared < 0) {
+        while (0 != env.compareIndentLevel(level)) {
+            // close top scope.
+            closeTopScope(env);
+        }
+        if (env.currentMode().get() != this) {
+            return Result::Redo;
+        }
+    }
+    return Result::Continue;
+}
+
 int evalIndent(Enviroment& env, Line& line)
 {
     auto indent = line.getIndent();
@@ -95,7 +125,12 @@ void closeTopScope(Enviroment& env)
     auto pCurrentScope = env.currentScopePointer();
     env.popScope();
     if (IScope::Type::Reference == pCurrentScope->type()) {
-        return ;
+        return;
+    } else if(IScope::Type::Boolean == pCurrentScope->type()) {
+        auto pBooleanScope = dynamic_cast<BooleanScope*>(pCurrentScope.get());
+        pBooleanScope->value() = pBooleanScope->result();
+        env.popMode();
+
     } else if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
         auto& objectDefined = pCurrentScope->value().get<ObjectDefined>();
         objectDefined.name = pCurrentScope->nestName().back();
@@ -110,8 +145,6 @@ void closeTopScope(Enviroment& env)
     } else if (Value::Type::String == pCurrentScope->valueType()) {
         auto& str = pCurrentScope->value().get<Value::string>();
         str = expandVariable(str, env);
-    } else if (Value::Type::Array == pCurrentScope->valueType()) {
-        // TODO check reference value
     }
 
     Value* pParentValue = nullptr;
@@ -200,7 +233,7 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
     return valuePos;
 }
 
-std::tuple<std::list<boost::string_view>, size_t> parseObjectName(Enviroment& env, Line& line, size_t start)
+std::tuple<std::list<boost::string_view>, size_t> parseObjectName(Enviroment const& env, Line& line, size_t start)
 {
     auto nameLine = Line(line.get(start), 0, line.length() - start);
     if ('[' != *nameLine.get(0)) {
@@ -283,8 +316,52 @@ void parseValue(Enviroment& env, Line& valueLine)
     }
 }
 
+Value parseValueInSingleLine(Enviroment const& env, Line& valueLine)
+{
+    auto start = valueLine.skipSpace(0);
+    valueLine.resize(start, 0);
+    if ('[' == *valueLine.get(0)) {
+        // parse Object
+        auto[objectNestName, p] = parseObjectName(env, valueLine, 0);
+
+        ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
+        if (&Value::arrayDefined == pObjectDefined) {
+            return Value().init(Value::Type::Array);
+        } else if (&Value::objectDefined == pObjectDefined) {
+            return Value().init(Value::Type::Object);
+        } else {
+            return Object(pObjectDefined);
+        }
+
+    } else if ('\\' == *valueLine.get(0)) {
+        // explicitly parse string
+        return valueLine.substr(1, valueLine.length() - 1).to_string();
+
+    } else {
+        // parse string, number or reference
+        auto str = valueLine.string_view().to_string();
+        bool isNumber = false;
+        auto num = toDouble(str, isNumber);
+        if (isNumber) {
+            return num;
+        } else {
+            if (isReference(str)) {
+                auto strLine = Line(&str[2], 0, str.size() - 3);
+                auto[nestNameView, endPos] = parseName(strLine, 0);
+                auto nestName = toStringList(nestNameView);
+                return Reference(&env, nestName);
+            } else {
+                return str;
+            }
+        }
+    }
+
+    return Value::none;
+}
+
 std::tuple<boost::string_view, bool> pickupName(Line const& line, size_t start)
 {
+    start = line.skipSpace(start);
     // search including illegal characters
     auto p = line.incrementPos(start, [](auto line, auto p) {
         auto c = line.get(p);
@@ -349,10 +426,11 @@ struct ChildOrderAccessorParseTraits final : public INameAccessorParseTraits
     }
 };
 
-std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, size_t start)
+std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, size_t start, bool &outIsSuccess)
 {
-    auto [firstNameView, isSuccess] = pickupName(line, start);
+    auto[firstNameView, isSuccess] = pickupName(line, start);
     if (!isSuccess) {
+        outIsSuccess = false;
         return { {}, 0 };
     }
 
@@ -367,6 +445,7 @@ std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, si
         pAccessorParser = &ChildOrderAccessorParseTraits::instance();
     } else {
         auto endPos = start + firstNameView.length();
+        outIsSuccess = true;
         return { { firstNameView }, endPos };
     }
     p = pAccessorParser->skipAccessChars(line, p);
@@ -376,8 +455,9 @@ std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, si
     while (!line.isEndLine(p)) {
         p = line.skipSpace(p);
         auto debugLine = Line(line.get(p), 0, line.length() - p);
-        auto [nameView, isSuccess] = pickupName(line, p);
+        auto[nameView, isSuccess] = pickupName(line, p);
         if (!isSuccess) {
+            outIsSuccess = false;
             return { {}, 0 };
         }
         pAccessorParser->push(result, nameView);
@@ -390,7 +470,18 @@ std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, si
         p = pAccessorParser->skipAccessChars(line, p);
     }
 
+    outIsSuccess = true;
     return { result, p };
+}
+
+std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, size_t start)
+{
+    bool isSuccess;
+    auto result = parseName(line, start, isSuccess);
+    if (!isSuccess) {
+        AWESOME_THROW(SyntaxException) << "Failed to parse name...";
+    }
+    return result;
 }
 
 OperatorType parseOperator(size_t& outEndPos, Line const& line, size_t start)
@@ -468,6 +559,23 @@ Value const* searchValue(std::list<std::string> const& nestName, Enviroment cons
     return pResult;
 }
 
+Value* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment & env, bool doGetParent)
+{
+    return const_cast<Value*>(searchValue(outIsSuccess, nestName, const_cast<Enviroment const&>(env), doGetParent));
+}
+
+Value const* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
+{
+    try {
+        auto pValue = searchValue(nestName, env, doGetParent);
+        outIsSuccess = true;
+        return pValue;
+    } catch (...) {
+        outIsSuccess = false;
+        return nullptr;
+    }
+}
+
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
 {
     auto p = line.skipSpace(inOutPos);
@@ -522,6 +630,14 @@ std::string expandVariable(std::string & inOutStr, Enviroment const& env)
     }
 
     return str;
+}
+
+std::tuple<CompareOperator, size_t> parseCompareOperator(Line& line, size_t start)
+{
+    start = line.skipSpace(start);
+    auto p = line.incrementPos(start, [](auto line, auto p) { return !isSpace(line.get(p)); });
+    auto opType = toCompareOperatorType(line.substr(start, p - start));
+    return { opType, p};
 }
 
 }

@@ -81,36 +81,12 @@ public:
     {
         std::exception_ptr const pException = std::current_exception();
         if(!pException) {
-            std::cerr << "hoge" << std::endl;
             std::abort();
         }
         try {
             std::rethrow_exception(pException);
         } catch(boost::exception const& e) {
-            {
-                std::cerr << "terminate called after throwing an instance of '";
-                auto const& ti = typeid(e);
-                auto demangleName = demangle(ti);
-                std::cerr << (demangleName.empty() ? ti.name() : demangleName) << "\n";
-            }
-            if(char const *const* p = boost::get_error_info<boost::throw_file>(e) ) {
-                std::cerr << *p << ':';
-            }
-            if(int const * p = boost::get_error_info<boost::throw_line>(e)) {
-                std::cerr << *p << ":";
-            }
-            if(char const* const* p = boost::get_error_info<boost::throw_function>(e)) {
-                std::cerr << *p << ": ";
-            }
-            if(std::exception const* p = dynamic_cast<std::exception const *>(&e)) {
-                std::cerr << p->what();
-            }
-            std::cerr << "\n";
-            if(boost::stacktrace::stacktrace const* p = boost::get_error_info<StackTraceErrorInfo>(e)) {
-                std::cerr << "Backtrace:\n";
-                std::cerr << *p << "\n";
-            }
-            std::cerr << std::flush;
+            handleBoostException(e);
         }catch(std::exception const& e) {
             std::cerr << "A unhandling exception occurred.\n";
             std::cerr << e.what() << std::endl;
@@ -118,5 +94,33 @@ public:
             std::cerr << "A unhandling exception occurred." << std::endl;
         }
         std::abort();
+    }
+
+    static void handleBoostException(boost::exception const& e)
+    {
+        {
+            std::cerr << "terminate called after throwing an instance of '";
+            auto const& ti = typeid(e);
+            auto demangleName = demangle(ti);
+            std::cerr << (demangleName.empty() ? ti.name() : demangleName) << "\n";
+        }
+        if (char const *const* p = boost::get_error_info<boost::throw_file>(e)) {
+            std::cerr << *p << ':';
+        }
+        if (int const * p = boost::get_error_info<boost::throw_line>(e)) {
+            std::cerr << *p << ":";
+        }
+        if (char const* const* p = boost::get_error_info<boost::throw_function>(e)) {
+            std::cerr << *p << ": ";
+        }
+        if (std::exception const* p = dynamic_cast<std::exception const *>(&e)) {
+            std::cerr << p->what();
+        }
+        std::cerr << "\n";
+        if (boost::stacktrace::stacktrace const* p = boost::get_error_info<StackTraceErrorInfo>(e)) {
+            std::cerr << "Backtrace:\n";
+            std::cerr << *p << "\n";
+        }
+        std::cerr << std::flush;
     }
 };
