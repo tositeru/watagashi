@@ -98,7 +98,9 @@ bool7 judge bool1 and bool2, bool3
 bool8 judge
   bool1 or
   bool2,
-  bool3 in_reverse
+  bool3
+bool9 judge not bool2
+bool10 deny !bool2
 
 ##
   Project setting example

@@ -74,11 +74,11 @@ class BooleanScope : public IScope
     bool mDoSkip;
     int mTrueCount;
     int mFalseCount;
-    bool mIsInReverse;
+    bool mIsDenial;
 
 public:
-    BooleanScope(std::list<std::string> const& nestName);
-    BooleanScope(std::list<boost::string_view> const& nestName);
+    BooleanScope(std::list<std::string> const& nestName, bool isDenial);
+    BooleanScope(std::list<boost::string_view> const& nestName, bool isDenial);
 
     Type type()const override;
     std::list<std::string> const& nestName()const override;

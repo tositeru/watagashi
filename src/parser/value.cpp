@@ -243,11 +243,12 @@ bool Value::operator==(Value const& right)const
     if (this->type != right.type)
         return false;
     switch (this->type) {
+    case Type::Bool:   return this->get<bool>() == right.get<bool>();
     case Type::String: return this->get<Value::string>() == right.get<Value::string>();
     case Type::Number: return this->get<Value::number>() == right.get<Value::number>();
     default:
         AWESOME_THROW(invalid_argument)
-            << "It can not comapre except string or number type...";
+            << "It can not comapre equivalencies except bool, string or number type...";
     }
     return false;
 }

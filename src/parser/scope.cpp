@@ -93,24 +93,24 @@ Value::Type ReferenceScope::valueType()const
 //  class BooleanScope
 //
 //----------------------------------------------------------------------------------
-BooleanScope::BooleanScope(std::list<std::string> const& nestName)
+BooleanScope::BooleanScope(std::list<std::string> const& nestName, bool isDenial)
     : mNestName(nestName)
     , mValue(false)
     , mLogicOp(LogicOperator::Continue)
     , mDoSkip(false)
     , mTrueCount(0)
     , mFalseCount(0)
-    , mIsInReverse(false)
+    , mIsDenial(isDenial)
 {}
 
-BooleanScope::BooleanScope(std::list<boost::string_view> const& nestName)
+BooleanScope::BooleanScope(std::list<boost::string_view> const& nestName, bool isDenial)
     : mNestName()
     , mValue(false)
     , mLogicOp(LogicOperator::Continue)
     , mDoSkip(false)
     , mTrueCount(0)
     , mFalseCount(0)
-    , mIsInReverse(false)
+    , mIsDenial(isDenial)
 {
     this->mNestName = toStringList(nestName);
 }
@@ -210,7 +210,7 @@ bool BooleanScope::result()const
         AWESOME_THROW(BooleanException)
             << "use unknown logic operator...";
     }
-    return this->mIsInReverse ? !result : result;
+    return this->mIsDenial ? !result : result;
 }
 
 }

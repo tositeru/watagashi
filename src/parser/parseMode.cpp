@@ -365,7 +365,7 @@ std::tuple<boost::string_view, bool> pickupName(Line const& line, size_t start)
     // search including illegal characters
     auto p = line.incrementPos(start, [](auto line, auto p) {
         auto c = line.get(p);
-        return !(isSpace(c) || isParentOrderAccessorChar(c));
+        return !(isSpace(c) || isParentOrderAccessorChar(c) || isContinueLogicOperatorChar(c));
     });
     auto nameStr = Line(line.get(start), 0, p - start);
     if (nameStr.find(0, [](auto line, auto p) { return !isNameChar(line.get(p)); })) {

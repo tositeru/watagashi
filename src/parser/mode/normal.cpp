@@ -43,10 +43,10 @@ IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
             env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::Array)));
             p = parseArrayElement(env, line, p);
 
-        } else if(OperatorType::Judge == opType) {
+        } else if(OperatorType::Judge == opType || OperatorType::Deny == opType) {
             //skip member name and operator in the line so that BooleanParseMode does not parse them.
             line.resize(p, 0);
-            env.pushScope(std::make_shared<BooleanScope>(nestNames));
+            env.pushScope(std::make_shared<BooleanScope>(nestNames, OperatorType::Deny == opType));
             env.pushMode(std::make_shared<BooleanParseMode>());
             auto pMode = env.currentMode();
             return pMode->parse(env, line);
