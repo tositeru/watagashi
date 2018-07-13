@@ -12,44 +12,54 @@ namespace parser
 
 std::tuple<LogicOperator, size_t> findLogicOperator(Line const& line, size_t start)
 {
+    auto const isNotSeparator = [](auto line, auto pos) {
+        return !isSpace(line.get(pos)) && ',' != *line.get(pos);
+    };
+
     auto pos = line.skipSpace(start);
     // search logical operator beginning with '\'
     while (!line.isEndLine(pos)) {
         auto backSlashPos = line.incrementPos(pos, [](auto line, auto pos) {
             return '\\' != *line.get(pos);
         });
-        if (backSlashPos == line.length()) {
-            break;
+        //if (backSlashPos == line.length()) {
+        //    break;
+        //}
+        auto wordEnd = line.incrementPos(backSlashPos, isNotSeparator);
+        if (wordEnd == backSlashPos) {
+            wordEnd = std::min(wordEnd+1, line.length());
         }
-        auto wordEnd = line.incrementPos(backSlashPos, [](auto line, auto pos) {
-            return !isSpace(line.get(pos));
-        });
-        auto keyward = line.substr(backSlashPos+1, wordEnd);
+        auto keyward = line.substr(backSlashPos+1, wordEnd - backSlashPos);
         auto logicOp = toLogicOperatorType(keyward);
         if (LogicOperator::Unknown != logicOp) {
-            return { logicOp, backSlashPos };
+            return { logicOp, wordEnd };
         }
-        pos = wordEnd + 1;
+        pos = wordEnd;
+        if (',' != *line.get(wordEnd))
+            ++pos;
     }
 
     // search logical operator.
     pos = line.skipSpace(start);
     while (!line.isEndLine(pos)) {
-        auto wordEnd = line.incrementPos(pos, [](auto line, auto pos) {
-            return !isSpace(line.get(pos));
-        });
-        if (line.length() <= wordEnd) {
-            pos = line.length();
-            break;
+        auto wordEnd = line.incrementPos(pos, isNotSeparator);
+        //if (line.length() <= wordEnd) {
+        //    pos = line.length();
+        //    break;
+        //}
+        if (wordEnd == pos) {
+            wordEnd = std::min(wordEnd + 1, line.length());
         }
-        auto keyward = line.substr(pos, wordEnd);
+        auto keyward = line.substr(pos, wordEnd-pos);
         auto logicOp = toLogicOperatorType(keyward);
         if (LogicOperator::Unknown != logicOp) {
-            return { logicOp, pos };
+            return { logicOp, wordEnd };
         }
-        pos = wordEnd+1;
+        pos = wordEnd;
+        if (',' != *line.get(wordEnd))
+            ++pos;
     }
-    return {LogicOperator::Continue, pos };
+    return {LogicOperator::Continue, std::min(pos, line.length()) };
 }
 
 std::tuple<CompareOperator, size_t> findCompareOperator(Line const& line, size_t start)
@@ -66,10 +76,10 @@ std::tuple<CompareOperator, size_t> findCompareOperator(Line const& line, size_t
         auto wordEnd = line.incrementPos(backSlashPos, [](auto line, auto pos) {
             return !isSpace(line.get(pos));
         });
-        auto keyward = line.substr(backSlashPos + 1, wordEnd);
+        auto keyward = line.substr(backSlashPos + 1, wordEnd - backSlashPos);
         auto compareOp = toCompareOperatorType(keyward);
         if (CompareOperator::Unknown != compareOp) {
-            return { compareOp, backSlashPos };
+            return { compareOp, wordEnd };
         }
         pos = wordEnd + 1;
     }
@@ -86,11 +96,11 @@ std::tuple<CompareOperator, size_t> findCompareOperator(Line const& line, size_t
         auto keyward = line.substr(pos, wordEnd-pos);
         auto compareOp = toCompareOperatorType(keyward);
         if (CompareOperator::Unknown != compareOp) {
-            return { compareOp, pos };
+            return { compareOp, wordEnd };
         }
         pos = wordEnd + 1;
     }
-    return { CompareOperator::Unknown, pos };
+    return { CompareOperator::Unknown, std::min(pos, line.length()) };
 }
 
 Value const* getValue(Value& outValueEntity, Enviroment const& env, Line& valueLine)
@@ -133,14 +143,37 @@ IParseMode::Result BooleanParseMode::parse(Enviroment& env, Line& line)
             auto [compareOp, compareOpStart] = findCompareOperator(booleanLine, 0);
             if (CompareOperator::Unknown == compareOp) {
                 // eval var of bool type
+
+                //check denial
+                bool isDenial = false;
+                if (5 <= booleanLine.length()) {
+                    if ("not " == booleanLine.substr(0, 4)) {
+                        isDenial = true;
+
+                        booleanLine.resize(4, 0);
+                        auto p = booleanLine.skipSpace(0);
+                        booleanLine.resize(p, 0);
+                    }
+                }
+                if (3 <= booleanLine.length()) {
+                    if ("!" == booleanLine.substr(0, 1)) {
+                        isDenial = true;
+
+                        booleanLine.resize(1, 0);
+                        auto p = booleanLine.skipSpace(0);
+                        booleanLine.resize(p, 0);
+                    }
+                }
+
+                //
                 auto [boolVarNestName, nameEndPos] = parseName(booleanLine, 0);
                 Value const* pValue = searchValue(toStringList(boolVarNestName), env);
 
                 if (Value::Type::Bool != pValue->type) {
                     AWESOME_THROW(BooleanException) << "A value other than bool type can not be described in BooleanScope by itself.";
                 }
-
-                booleanScope.tally(pValue->get<bool>());
+                auto b = pValue->get<bool>();
+                booleanScope.tally(isDenial ? !b : b);
                 pos = logicOpEnd;
                 continue;
             }

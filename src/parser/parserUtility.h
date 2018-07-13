@@ -36,6 +36,7 @@ enum class OperatorType
     Is,
     Are,
     Judge,
+    Deny,
     Copy,
     Extend,
     PushBack,
@@ -75,6 +76,7 @@ enum class LogicOperator
 };
 LogicOperator toLogicOperatorType(boost::string_view const& str);
 boost::string_view const toString(LogicOperator type);
+bool isContinueLogicOperatorChar(char const* c);
 
 struct MakeExceptionCommand {};
 

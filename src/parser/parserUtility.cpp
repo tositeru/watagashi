@@ -60,6 +60,7 @@ static OperationBimap const operationBimap = boost::assign::list_of<OperationBim
     ("is", OperatorType::Is )
     ("are", OperatorType::Are)
     ("judge", OperatorType::Judge)
+    ("deny", OperatorType::Deny)
     ("copy", OperatorType::Copy )
     ("extend", OperatorType::Extend)
     ("push_back", OperatorType::PushBack)
@@ -150,6 +151,11 @@ boost::string_view const toString(LogicOperator type)
     return logicOperationBimap.right.end() == it
         ? UNKNOWN
         : it->get_left();
+}
+
+bool isContinueLogicOperatorChar(char const* c)
+{
+    return ',' == *c;
 }
 
 std::list<std::string> toStringList(std::list<boost::string_view> const& list)

@@ -13,6 +13,7 @@ if(MSVC)
   endif()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D\"_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING\"")
   add_compile_options("/source-charset:utf-8") # Visual Studio 2015, or greater
+  add_compile_options("/D \"NOMINMAX\"")
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-long-long -pedantic")
