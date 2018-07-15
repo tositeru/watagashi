@@ -20,6 +20,8 @@ public:
         Normal,
         Reference,
         Boolean,
+        Branch,
+        Dummy,
     };
 
 public:
@@ -55,15 +57,18 @@ class ReferenceScope : public IScope
 {
     std::list<std::string> mNestName;
     Value& mRefValue;
+    bool mDoPopModeAtCloging;
 public:
-    ReferenceScope(std::list<std::string> const& nestName, Value& value);
-    ReferenceScope(std::list<boost::string_view> const& nestName, Value & value);
+    ReferenceScope(std::list<std::string> const& nestName, Value& value, bool doPopModeAtCloging);
+    ReferenceScope(std::list<boost::string_view> const& nestName, Value & value, bool doPopModeAtCloging);
     Type type()const override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const;
+
+    bool doPopModeAtClosing()const;
 };
 
 class BooleanScope : public IScope
@@ -90,6 +95,57 @@ public:
     bool doEvalValue()const;
     void tally(bool b);
     bool result()const;
+};
+
+class BranchScope : public IScope
+{
+    IScope& mParentScope;
+    Value const* mpSwitchTargetVariable;
+    //
+    bool mIsDenial;
+    bool mDoRunAllTrueStatement;
+    int mRunningCountOfTrueStatement;
+    //
+    int mTrueCount;
+    int mFalseCount;
+    LogicOperator mLogicOp;
+    bool mDoSkip;
+
+public:
+    BranchScope(IScope& parentScope, Value const* pSwitchTargetVariable, bool isDenial);
+
+    Type type()const override;
+
+    std::list<std::string> const& nestName()const override;
+    Value& value() override;
+    Value const& value()const override;
+    Value::Type valueType()const;
+
+    bool isSwitch()const;
+    Value const& switchTargetValue()const;
+
+    void tally(bool result);
+    bool doCurrentStatements()const;
+    void resetBranchState();
+
+    void setLogicOperator(LogicOperator op);
+    bool doEvalValue()const;
+
+    // operate running count of true statement
+    void incrementRunningCount();
+    bool doElseStatement()const;
+};
+
+class DummyScope : public IScope
+{
+public:
+    Type type()const override;
+
+    std::list<std::string> const& nestName()const override;
+    Value& value() override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
 };
 
 }

@@ -94,7 +94,7 @@ bool3 judge n less 100
 bool4 judge n less_equal 100
 bool5 judge n greater 100
 bool6 judge n greater_equal 100
-bool7 judge bool1 and bool2, bool3
+bool7 judge bool1, bool2, bool3
 bool8 judge
   bool1 or
   bool2,
@@ -106,26 +106,33 @@ bool10 deny !bool2
   Project setting example
 ##
 
-##
 # like if
-:if
+:if 
   str1 equal Apple
     str1 is Apple2
-  str1 less Orange or greater Grape
+  str1 less Orange or
+  str1 greater Grape
     str1 is Orange
   else
     str1 is Unknown
 
 # like switch
-:if str1
+valueIf is Test
+:empty_line
+:if valueIf
+  equal Empty Line Test
+    :empty_line
   equal Apple
-    str1 is Apple2
+    valueIf is Apple2
+  equal Test
   less Orange or greater Grape
-    str1 is Orange
+    valueIf is Orange
   else
-    str1 is Unknown
+    valueIf is Unknown
 
-##
+:unless
+  valueIf not_equal Apple
+    unlessMake is OK
 
 libraryPrefix is lib
 librarySuffix is -vc141-mt-s-x64-1_67

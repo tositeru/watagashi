@@ -9,6 +9,8 @@
 #include "parserUtility.h"
 #include "value.h"
 #include "mode/multiLineComment.h"
+#include "mode/normal.h"
+#include "mode/doNothing.h"
 
 using namespace std;
 
@@ -29,8 +31,33 @@ IParseMode::Result IParseMode::preprocess(Enviroment& env, Line& line)
 
     int resultCompared = env.compareIndentLevel(level);
     if (0 < resultCompared) {
-        throw MakeException<SyntaxException>()
-            << "An indent above current scope depth is described." << MAKE_EXCEPTION;
+        switch (env.currentScope().type()) {
+        case IScope::Type::Branch:
+        {
+            if (2 <= resultCompared) {
+                throw MakeException<SyntaxException>()
+                    << "An indent above current scope depth is described." << MAKE_EXCEPTION;
+            }
+
+            auto& branchScope = dynamic_cast<BranchScope&>(env.currentScope());
+            if (branchScope.doCurrentStatements()) {
+                env.pushScope(std::make_shared<ReferenceScope>(branchScope.nestName(), branchScope.value(), true));
+                env.pushMode(std::make_shared<NormalParseMode>());
+                branchScope.incrementRunningCount();
+
+            } else {
+                env.pushMode(std::make_shared<DoNothingParseMode>());
+                env.pushScope(std::make_shared<DummyScope>());
+
+            }
+            branchScope.resetBranchState();
+            return Result::Continue;
+        }
+        default:
+            throw MakeException<SyntaxException>()
+                << "An indent above current scope depth is described." << MAKE_EXCEPTION;
+            break;
+        }
     }
 
     if (resultCompared < 0) {
@@ -124,27 +151,45 @@ void closeTopScope(Enviroment& env)
 
     auto pCurrentScope = env.currentScopePointer();
     env.popScope();
-    if (IScope::Type::Reference == pCurrentScope->type()) {
+    switch (pCurrentScope->type()) {
+    case IScope::Type::Branch: [[fallthrough]];
+    case IScope::Type::Dummy:
+        env.popMode();
         return;
-    } else if(IScope::Type::Boolean == pCurrentScope->type()) {
+    case IScope::Type::Reference:
+    {
+        auto* pRefScope = dynamic_cast<ReferenceScope*>(pCurrentScope.get());
+        if (pRefScope->doPopModeAtClosing()) {
+            env.popMode();
+        }
+        return;
+    }
+    case IScope::Type::Boolean:
+    {
         auto pBooleanScope = dynamic_cast<BooleanScope*>(pCurrentScope.get());
         pBooleanScope->value() = pBooleanScope->result();
         env.popMode();
+        break;
+    }
+    default:
+        if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
+            auto& objectDefined = pCurrentScope->value().get<ObjectDefined>();
+            objectDefined.name = pCurrentScope->nestName().back();
+            env.popMode();
 
-    } else if (Value::Type::ObjectDefined == pCurrentScope->valueType()) {
-        auto& objectDefined = pCurrentScope->value().get<ObjectDefined>();
-        objectDefined.name = pCurrentScope->nestName().back();
-        env.popMode();
-    } else if (Value::Type::Object == pCurrentScope->valueType()) {
-        auto& obj = pCurrentScope->value().get<Value::object>();
-        if (!obj.applyObjectDefined()) {
-            std::string fullname = toNameString(pCurrentScope->nestName());
-            throw MakeException<DefinedObjectException>()
-                << "An undefined member exists in '" << fullname << "." << MAKE_EXCEPTION;
+        } else if (Value::Type::Object == pCurrentScope->valueType()) {
+            auto& obj = pCurrentScope->value().get<Value::object>();
+            if (!obj.applyObjectDefined()) {
+                std::string fullname = toNameString(pCurrentScope->nestName());
+                throw MakeException<DefinedObjectException>()
+                    << "An undefined member exists in '" << fullname << "." << MAKE_EXCEPTION;
+            }
+
+        } else if (Value::Type::String == pCurrentScope->valueType()) {
+            auto& str = pCurrentScope->value().get<Value::string>();
+            str = expandVariable(str, env);
         }
-    } else if (Value::Type::String == pCurrentScope->valueType()) {
-        auto& str = pCurrentScope->value().get<Value::string>();
-        str = expandVariable(str, env);
+        break;
     }
 
     Value* pParentValue = nullptr;
@@ -153,6 +198,8 @@ void closeTopScope(Enviroment& env)
     } else {
         pParentValue = &env.currentScope().value();
     }
+
+
 
     switch (pParentValue->type) {
     case Value::Type::Object:
@@ -233,7 +280,7 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
     return valuePos;
 }
 
-std::tuple<std::list<boost::string_view>, size_t> parseObjectName(Enviroment const& env, Line& line, size_t start)
+std::tuple<std::list<boost::string_view>, EndPos> parseObjectName(Enviroment const& env, Line& line, size_t start)
 {
     auto nameLine = Line(line.get(start), 0, line.length() - start);
     if ('[' != *nameLine.get(0)) {
@@ -355,7 +402,6 @@ Value parseValueInSingleLine(Enviroment const& env, Line& valueLine)
             }
         }
     }
-
     return Value::none;
 }
 
@@ -368,7 +414,7 @@ std::tuple<boost::string_view, bool> pickupName(Line const& line, size_t start)
         return !(isSpace(c) || isParentOrderAccessorChar(c) || isContinueLogicOperatorChar(c));
     });
     auto nameStr = Line(line.get(start), 0, p - start);
-    if (nameStr.find(0, [](auto line, auto p) { return !isNameChar(line.get(p)); })) {
+    if (nameStr.length() <= 0 || nameStr.find(0, [](auto line, auto p) { return !isNameChar(line.get(p)); })) {
         return { boost::string_view{}, false };
     }
     return { nameStr.string_view(), true };
@@ -426,7 +472,7 @@ struct ChildOrderAccessorParseTraits final : public INameAccessorParseTraits
     }
 };
 
-std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, size_t start, bool &outIsSuccess)
+std::tuple<std::list<boost::string_view>, EndPos> parseName(Line const& line, size_t start, bool &outIsSuccess)
 {
     auto[firstNameView, isSuccess] = pickupName(line, start);
     if (!isSuccess) {
@@ -454,7 +500,7 @@ std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, si
     result.push_back(firstNameView);
     while (!line.isEndLine(p)) {
         p = line.skipSpace(p);
-        auto debugLine = Line(line.get(p), 0, line.length() - p);
+
         auto[nameView, isSuccess] = pickupName(line, p);
         if (!isSuccess) {
             outIsSuccess = false;
@@ -474,7 +520,7 @@ std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, si
     return { result, p };
 }
 
-std::tuple<std::list<boost::string_view>, size_t> parseName(Line const& line, size_t start)
+std::tuple<std::list<boost::string_view>, EndPos> parseName(Line const& line, size_t start)
 {
     bool isSuccess;
     auto result = parseName(line, start, isSuccess);
@@ -576,6 +622,21 @@ Value const* searchValue(bool& outIsSuccess, std::list<std::string> const& nestN
     }
 }
 
+Value const* getValue(Value& outValueEntity, Enviroment const& env, Line& valueLine)
+{
+    bool isSuccess = false;
+    auto[nestNameView, leftValueNamePos] = parseName(valueLine, 0, isSuccess);
+    Value const* pValue = nullptr;
+    if (isSuccess) {
+        pValue = searchValue(isSuccess, toStringList(nestNameView), env);
+    }
+    if (!pValue) {
+        outValueEntity = parseValueInSingleLine(env, valueLine);
+        pValue = &outValueEntity;
+    }
+    return pValue;
+}
+
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
 {
     auto p = line.skipSpace(inOutPos);
@@ -632,12 +693,165 @@ std::string expandVariable(std::string & inOutStr, Enviroment const& env)
     return str;
 }
 
-std::tuple<CompareOperator, size_t> parseCompareOperator(Line& line, size_t start)
+bool compareValues(Value const& left, Value const& right, CompareOperator compareOp)
+{
+    bool isResult = false;
+    switch (compareOp) {
+    case CompareOperator::Equal:        isResult = (left == right); break;
+    case CompareOperator::NotEqual:     isResult = (left != right); break;
+    case CompareOperator::Greater:      isResult = (left > right); break;
+    case CompareOperator::GreaterEqual: isResult = (left >= right); break;
+    case CompareOperator::Less:         isResult = (left < right); break;
+    case CompareOperator::LessEqual:    isResult = (left <= right); break;
+    default:
+        AWESOME_THROW(BooleanException) << "use unknown compare...";
+    }
+    return isResult;
+}
+
+std::tuple<CompareOperator, EndPos> parseCompareOperator(Line& line, size_t start)
 {
     start = line.skipSpace(start);
     auto p = line.incrementPos(start, [](auto line, auto p) { return !isSpace(line.get(p)); });
     auto opType = toCompareOperatorType(line.substr(start, p - start));
     return { opType, p};
 }
+
+std::tuple<LogicOperator, EndPos> findLogicOperator(Line const& line, size_t start)
+{
+    auto const isNotSeparator = [](auto line, auto pos) {
+        return !isSpace(line.get(pos)) && ',' != *line.get(pos);
+    };
+
+    auto pos = line.skipSpace(start);
+    // search logical operator beginning with '\'
+    while (!line.isEndLine(pos)) {
+        auto backSlashPos = line.incrementPos(pos, [](auto line, auto pos) {
+            return '\\' != *line.get(pos);
+        });
+
+        auto wordEnd = line.incrementPos(backSlashPos, isNotSeparator);
+        if (wordEnd == backSlashPos) {
+            wordEnd = std::min(wordEnd + 1, line.length());
+        }
+        auto keyward = line.substr(backSlashPos + 1, wordEnd - backSlashPos);
+        auto logicOp = toLogicOperatorType(keyward);
+        if (LogicOperator::Unknown != logicOp) {
+            return { logicOp, wordEnd };
+        }
+        pos = wordEnd;
+        if (',' != *line.get(wordEnd))
+            ++pos;
+    }
+
+    // search logical operator.
+    pos = line.skipSpace(start);
+    while (!line.isEndLine(pos)) {
+        auto wordEnd = line.incrementPos(pos, isNotSeparator);
+
+        if (wordEnd == pos) {
+            wordEnd = std::min(wordEnd + 1, line.length());
+        }
+        auto keyward = line.substr(pos, wordEnd - pos);
+        auto logicOp = toLogicOperatorType(keyward);
+        if (LogicOperator::Unknown != logicOp) {
+            return { logicOp, wordEnd };
+        }
+        pos = wordEnd;
+        if (',' != *line.get(wordEnd))
+            ++pos;
+    }
+    return { LogicOperator::Continue, std::min(pos, line.length()) };
+}
+
+void foreachLogicOperator(Line const& line, size_t start, std::function<bool(Line, LogicOperator)> predicate)
+{
+    auto pos = start;
+    while (!line.isEndLine(pos)) {
+        auto startPos = line.skipSpace(pos);
+        auto[logicOp, logicOpEnd] = findLogicOperator(line, startPos);
+        auto logicStr = toString(logicOp);
+        size_t logicOpStart = logicOpEnd;
+        switch (logicOp) {
+        case LogicOperator::And: [[fallthrough]];
+        case LogicOperator::Or:
+            logicOpStart = logicOpEnd - logicStr.length();
+            break;
+        default: [[fallthrough]];
+        case LogicOperator::Continue:
+            if (logicStr == boost::string_view(line.get(logicOpEnd - logicStr.size()), logicStr.size())) {
+                logicOpStart = logicOpEnd - 1;
+            }
+            break;
+        }
+        auto booleanLine = Line(line.get(startPos), 0, logicOpStart - startPos);
+
+        if (!predicate(booleanLine, logicOp)) {
+            break;
+        }
+        pos = logicOpEnd;
+    }
+}
+
+std::tuple<CompareOperator, EndPos> findCompareOperator(Line const& line, size_t start)
+{
+    auto pos = line.skipSpace(start);
+    // search logical operator beginning with '\'
+    while (!line.isEndLine(pos)) {
+        auto backSlashPos = line.incrementPos(pos, [](auto line, auto pos) {
+            return '\\' != *line.get(pos);
+        });
+        if (backSlashPos == line.length()) {
+            break;
+        }
+        auto wordEnd = line.incrementPos(backSlashPos, [](auto line, auto pos) {
+            return !isSpace(line.get(pos));
+        });
+        auto keyward = line.substr(backSlashPos + 1, wordEnd - backSlashPos);
+        auto compareOp = toCompareOperatorType(keyward);
+        if (CompareOperator::Unknown != compareOp) {
+            return { compareOp, wordEnd };
+        }
+        pos = wordEnd + 1;
+    }
+
+    // search logical operator.
+    pos = line.skipSpace(start);
+    while (!line.isEndLine(pos)) {
+        auto wordEnd = line.incrementPos(pos, [](auto line, auto pos) {
+            return !isSpace(line.get(pos));
+        });
+        if (wordEnd == line.length()) {
+            break;
+        }
+        auto keyward = line.substr(pos, wordEnd - pos);
+        auto compareOp = toCompareOperatorType(keyward);
+        if (CompareOperator::Unknown != compareOp) {
+            return { compareOp, wordEnd };
+        }
+        pos = wordEnd + 1;
+    }
+    return { CompareOperator::Unknown, std::min(pos, line.length()) };
+}
+
+std::tuple<bool, EndPos> doExistDenialKeyward(Line const& line)
+{
+    bool isDenial = false;
+    if (5 <= line.length()) {
+        if ("not " == line.substr(0, 4)) {
+            auto p = line.skipSpace(4);
+            return { true, p };
+        }
+    }
+    if (3 <= line.length()) {
+        if ("!" == line.substr(0, 1)) {
+            isDenial = true;
+            auto p = line.skipSpace(1);
+            return { true, p };
+        }
+    }
+    return { false, 0 };
+}
+
 
 }

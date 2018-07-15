@@ -78,6 +78,15 @@ LogicOperator toLogicOperatorType(boost::string_view const& str);
 boost::string_view const toString(LogicOperator type);
 bool isContinueLogicOperatorChar(char const* c);
 
+enum class Statement {
+    Unknown,
+    EmptyLine,
+    Branch,
+    Unless,
+};
+Statement toStatementType(boost::string_view const& str);
+boost::string_view const toString(Statement type);
+
 struct MakeExceptionCommand {};
 
 extern MakeExceptionCommand const MAKE_EXCEPTION;

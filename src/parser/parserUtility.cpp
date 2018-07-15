@@ -158,6 +158,29 @@ bool isContinueLogicOperatorChar(char const* c)
     return ',' == *c;
 }
 
+using StatementBimap = boost::bimap<boost::string_view, Statement>;
+static StatementBimap const statementBimap = boost::assign::list_of<StatementBimap::relation>
+    ("empty_line", Statement::EmptyLine)
+    ("if", Statement::Branch)
+    ("unless", Statement::Unless);
+
+Statement toStatementType(boost::string_view const& str)
+{
+    auto it = statementBimap.left.find(str);
+    return statementBimap.left.end() == it
+        ? Statement::Unknown
+        : it->get_right();
+}
+
+boost::string_view const toString(Statement type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = statementBimap.right.find(type);
+    return statementBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
+
 std::list<std::string> toStringList(std::list<boost::string_view> const& list)
 {
     std::list<std::string> result;
