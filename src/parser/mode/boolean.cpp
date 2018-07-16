@@ -27,7 +27,7 @@ IParseMode::Result BooleanParseMode::parse(Enviroment& env, Line& line)
             if (!booleanScope.doEvalValue()) {
                 return false;
             }
-            auto[compareOp, compareOpStart] = findCompareOperator(line, 0);
+            auto [compareOp, compareOpStart] = findCompareOperator(line, 0);
             if (CompareOperator::Unknown == compareOp) {
                 // eval var of bool type
                 auto [pBool, isDenial] = parseBool(env, line);

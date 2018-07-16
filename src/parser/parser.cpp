@@ -123,10 +123,13 @@ void showValue(Value const& value)
         cout << "Object: member count=" << obj.members.size() << endl;
         for (auto&& member : obj.members) {
             cout << "  " << member.first << " = ";
-            if (Value::Type::String == member.second.type
-                || Value::Type::Number == member.second.type) {
+            switch (member.second.type) {
+            case Value::Type::String: [[fallthrough]];
+            case Value::Type::Number: [[fallthrough]];
+            case Value::Type::Bool:
                 showValue(member.second);
-            } else {
+                break;
+            default:
                 cout << Value::toString(member.second.type) << endl;
             }
         }

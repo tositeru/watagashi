@@ -2,8 +2,83 @@
 
 #include "line.h"
 
+#include "parseMode.h"
+#include "enviroment.h"
+
 namespace parser
 {
+//----------------------------------------------------------------------------------
+//
+//  class IScope
+//
+//----------------------------------------------------------------------------------
+
+void IScope::close(Enviroment& env)
+{
+    if (Value::Type::ObjectDefined == this->valueType()) {
+        auto& objectDefined = this->value().get<ObjectDefined>();
+        objectDefined.name = this->nestName().back();
+        env.popMode();
+
+    } else if (Value::Type::Object == this->valueType()) {
+        auto& obj = this->value().get<Value::object>();
+        if (!obj.applyObjectDefined()) {
+            std::string fullname = toNameString(this->nestName());
+            throw MakeException<DefinedObjectException>()
+                << "An undefined member exists in '" << fullname << "." << MAKE_EXCEPTION;
+        }
+
+    } else if (Value::Type::String == this->valueType()) {
+        auto& str = this->value().get<Value::string>();
+        str = expandVariable(str, env);
+    }
+
+    // set parsing value to the parent
+    Value* pParentValue = nullptr;
+    if (2 <= this->nestName().size()) {
+        pParentValue = searchValue(this->nestName(), env, true);
+    } else {
+        pParentValue = &env.currentScope().value();
+    }
+    switch (pParentValue->type) {
+    case Value::Type::Object:
+        if (!pParentValue->addMember(*this)) {
+            throw MakeException<SyntaxException>()
+                << "Failed to add an element to the current scope object." << MAKE_EXCEPTION;
+        }
+
+        break;
+    case Value::Type::Array:
+        if ("" == this->nestName().back()) {
+            pParentValue->pushValue(this->value());
+        } else {
+            if (!pParentValue->addMember(*this)) {
+                throw MakeException<SyntaxException>()
+                    << "Failed to add an element to the current scope array because it was a index out of range."
+                    << MAKE_EXCEPTION;
+            }
+        }
+        break;
+    case Value::Type::ObjectDefined:
+        if (!pParentValue->addMember(*this)) {
+            throw MakeException<SyntaxException>()
+                << "Failed to add an element to the current scope object."
+                << MAKE_EXCEPTION;
+        }
+        break;
+    case Value::Type::MemberDefined:
+    {
+        auto& memberDefined = pParentValue->get<MemberDefined>();
+        memberDefined.defaultValue = this->value();
+        break;
+    }
+    default:
+        throw MakeException<SyntaxException>()
+            << "The current value can not have children."
+            << MAKE_EXCEPTION;
+    }
+}
+
 //----------------------------------------------------------------------------------
 //
 //  class NormalScope
@@ -69,6 +144,12 @@ ReferenceScope::ReferenceScope(std::list<boost::string_view> const& nestName, Va
 IScope::Type ReferenceScope::type()const{
     return Type::Reference;
 }
+void ReferenceScope::close(Enviroment& env)
+{
+    if (this->doPopModeAtClosing()) {
+        env.popMode();
+    }
+}
 
 std::list<std::string> const& ReferenceScope::nestName()const
 {
@@ -124,6 +205,13 @@ BooleanScope::BooleanScope(std::list<boost::string_view> const& nestName, bool i
 
 IScope::Type BooleanScope::type()const {
     return Type::Boolean;
+}
+
+void BooleanScope::close(Enviroment& env)
+{
+    this->value() = this->result();
+    env.popMode();
+    IScope::close(env);
 }
 
 std::list<std::string> const& BooleanScope::nestName()const
@@ -240,6 +328,11 @@ BranchScope::BranchScope(IScope& parentScope, Value const* pSwitchTargetVariable
 IScope::Type BranchScope::type()const
 {
     return Type::Branch;
+}
+
+void BranchScope::close(Enviroment& env)
+{
+    env.popMode();
 }
 
 std::list<std::string> const& BranchScope::nestName()const
@@ -381,6 +474,11 @@ bool BranchScope::doElseStatement()const
 IScope::Type DummyScope::type()const
 {
     return Type::Dummy;
+}
+
+void DummyScope::close(Enviroment& env)
+{
+    env.popMode();
 }
 
 std::list<std::string> const& DummyScope::nestName()const

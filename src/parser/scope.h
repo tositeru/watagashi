@@ -27,6 +27,8 @@ public:
 public:
     virtual ~IScope() {}
 
+    virtual void close(Enviroment& env);
+
     virtual Type type()const = 0;
     virtual std::list<std::string> const& nestName()const = 0;
     virtual Value& value() = 0;
@@ -62,6 +64,7 @@ public:
     ReferenceScope(std::list<std::string> const& nestName, Value& value, bool doPopModeAtCloging);
     ReferenceScope(std::list<boost::string_view> const& nestName, Value & value, bool doPopModeAtCloging);
     Type type()const override;
+    void close(Enviroment& env)override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;
@@ -86,6 +89,7 @@ public:
     BooleanScope(std::list<boost::string_view> const& nestName, bool isDenial);
 
     Type type()const override;
+    void close(Enviroment& env)override;
     std::list<std::string> const& nestName()const override;
     Value& value() override;
     Value const& value()const override;
@@ -115,6 +119,7 @@ public:
     BranchScope(IScope& parentScope, Value const* pSwitchTargetVariable, bool isDenial);
 
     Type type()const override;
+    void close(Enviroment& env)override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;
@@ -140,6 +145,8 @@ class DummyScope : public IScope
 {
 public:
     Type type()const override;
+
+    void close(Enviroment& env)override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;
