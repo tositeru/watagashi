@@ -204,4 +204,18 @@ struct Value::InnerData
     }
 };
 
+class RefOrEntityValue
+{
+public:
+    RefOrEntityValue(Value const& value);
+    RefOrEntityValue(Value const* pValue);
+
+    Value const& value()const;
+
+private:
+    boost::variant<
+        Value,
+        Value const*> mData;
+};
+
 }

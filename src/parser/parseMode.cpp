@@ -622,7 +622,7 @@ Value const* searchValue(bool& outIsSuccess, std::list<std::string> const& nestN
     }
 }
 
-Value const* getValue(Value& outValueEntity, Enviroment const& env, Line& valueLine)
+RefOrEntityValue getValue(Enviroment const& env, Line& valueLine)
 {
     bool isSuccess = false;
     auto[nestNameView, leftValueNamePos] = parseName(valueLine, 0, isSuccess);
@@ -631,10 +631,9 @@ Value const* getValue(Value& outValueEntity, Enviroment const& env, Line& valueL
         pValue = searchValue(isSuccess, toStringList(nestNameView), env);
     }
     if (!pValue) {
-        outValueEntity = parseValueInSingleLine(env, valueLine);
-        pValue = &outValueEntity;
+        return parseValueInSingleLine(env, valueLine);
     }
-    return pValue;
+    return RefOrEntityValue(pValue);
 }
 
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
@@ -647,6 +646,46 @@ Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
     auto type = Value::toType(typeStrView);
     inOutPos = end;
     return type;
+}
+
+std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line)
+{
+    //check denial
+    auto[isDenial, dinialEndPos] = doExistDenialKeyward(line);
+    //
+    auto[boolVarNestName, nameEndPos] = parseName(line, dinialEndPos);
+    Value const* pValue = searchValue(toStringList(boolVarNestName), env);
+
+    if (Value::Type::Bool != pValue->type) {
+        AWESOME_THROW(BooleanException) << "A value other than bool type can not be described in BooleanScope by itself.";
+    }
+    return { pValue, isDenial };
+}
+
+std::tuple<RefOrEntityValue, RefOrEntityValue> parseCompareTargetValues(
+    Enviroment const& env,
+    Line const& line,
+    size_t compareOpStart,
+    Value const* pUsedLeftValue,
+    Value const* pUsedRightValue)
+{
+    RefOrEntityValue leftValue(pUsedLeftValue);
+    if (nullptr == pUsedLeftValue) {
+        auto leftValueLine = Line(line.get(0), 0, compareOpStart - 1);
+        leftValue = getValue(env, leftValueLine);
+    }
+
+    auto startRightValue = line.incrementPos(compareOpStart, [](auto line, auto pos) {
+        return !isSpace(line.get(pos));
+    });
+    startRightValue = line.skipSpace(startRightValue);
+
+    RefOrEntityValue rightValue = pUsedRightValue;
+    if (nullptr == pUsedRightValue) {
+        auto rightValueLine = Line(line.get(startRightValue), 0, line.length() - startRightValue);
+        rightValue = getValue(env, rightValueLine);
+    }
+    return { leftValue, rightValue };
 }
 
 MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outEndPos, Line const& line, size_t start)

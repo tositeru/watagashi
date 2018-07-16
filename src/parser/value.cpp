@@ -240,8 +240,12 @@ Value& Value::init(Type type_)
 
 bool Value::operator==(Value const& right)const
 {
-    if (this->type != right.type)
-        return false;
+    if (this->type != right.type) {
+        AWESOME_THROW(invalid_argument)
+            << "The type of the value trying to compare is different... "
+            << "(left=" << toString(this->type) << ", right=" << toString(right.type) << ")";
+    }
+
     switch (this->type) {
     case Type::Bool:   return this->get<bool>() == right.get<bool>();
     case Type::String: return this->get<Value::string>() == right.get<Value::string>();
@@ -605,6 +609,43 @@ Value const& Value::getChild(std::string const& name)const
     default: break;
     }
     return Value::none;
+}
+
+//-----------------------------------------------------------------------
+//
+//  struct RefOrEntityValue
+//
+//-----------------------------------------------------------------------
+
+RefOrEntityValue::RefOrEntityValue(Value const& value)
+    : mData(value)
+{}
+
+RefOrEntityValue::RefOrEntityValue(Value const* pValue)
+{
+    if (nullptr != pValue) {
+        this->mData = pValue;
+    } else {
+        this->mData = Value::none;
+    }
+}
+
+class GetValueFromRefOrEntityValue : public boost::static_visitor<Value const&>
+{
+public:
+    Value const& operator()(Value const& entity)const
+    {
+        return entity;
+    }
+    Value const& operator()(Value const* pValue)const
+    {
+        return *pValue;
+    }
+};
+
+Value const& RefOrEntityValue::value()const
+{
+    return boost::apply_visitor(GetValueFromRefOrEntityValue(), this->mData);
 }
 
 }

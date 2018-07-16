@@ -8,6 +8,8 @@ namespace parser
 
 IParseMode::Result BranchParseMode::parse(Enviroment& env, Line& line)
 {
+    assert(IScope::Type::Branch == env.currentScope().type());
+
     auto& branchScope = dynamic_cast<BranchScope&>(env.currentScope());
 
     bool isElse = false;
@@ -33,44 +35,16 @@ IParseMode::Result BranchParseMode::parse(Enviroment& env, Line& line)
             auto[compareOp, compareOpStart] = findCompareOperator(line, 0);
             if (CompareOperator::Unknown == compareOp) {
                 // eval var of bool type
-
-                //check denial
-                auto[isDenial, dinialEndPos] = doExistDenialKeyward(line);
-                if (isDenial) {
-                    line.resize(dinialEndPos, 0);
-                }
-
-                //
-                auto[boolVarNestName, nameEndPos] = parseName(line, 0);
-                Value const* pValue = searchValue(toStringList(boolVarNestName), env);
-                if (Value::Type::Bool != pValue->type) {
-                    AWESOME_THROW(BooleanException) << "A value other than bool type can not be described in BooleanScope by itself.";
-                }
-                auto b = pValue->get<bool>();
+                auto[pBool, isDenial] = parseBool(env, line);
+                auto b = pBool->get<bool>();
                 branchScope.tally(isDenial ? !b : b);
+
             } else {
                 // compare values.
-                Value const* pLeftValue;
-                if (branchScope.isSwitch()) {
-                    pLeftValue = &branchScope.switchTargetValue();
-                } else {
-                    auto leftValueLine = Line(line.get(0), 0, compareOpStart - 1);
-                    Value leftValue;
-                    pLeftValue = getValue(leftValue, env, leftValueLine);
-                }
-
-                auto startRightValue = line.incrementPos(compareOpStart, [](auto line, auto pos) {
-                    return !isSpace(line.get(pos));
-                });
-                startRightValue = line.skipSpace(startRightValue);
-
-                auto rightValueLine = Line(line.get(startRightValue), 0, line.length() - startRightValue);
-                Value rightValue;
-                Value const* pRightValue = getValue(rightValue, env, rightValueLine);
-
-                bool isDenial = false;
-                bool result = compareValues(*pLeftValue, *pRightValue, compareOp);
-                branchScope.tally(isDenial ? !result : result);
+                auto [leftValue, rightValue] = parseCompareTargetValues(
+                    env, line, compareOpStart, branchScope.isSwitch() ? &branchScope.switchTargetValue() : nullptr, nullptr);
+                bool result = compareValues(leftValue.value(), rightValue.value(), compareOp);
+                branchScope.tally(result);
             }
 
             return true;

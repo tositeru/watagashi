@@ -131,7 +131,7 @@ valueIf is Test
     valueIf is Unknown
 
 :unless
-  valueIf not_equal Apple
+  valueIf equal Apple
     unlessMake is OK
 
 libraryPrefix is lib

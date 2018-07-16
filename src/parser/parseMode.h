@@ -60,7 +60,7 @@ Value* searchValue(std::list<std::string> const& nestName, Enviroment & env, boo
 Value const* searchValue(std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent = false);
 Value* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment & env, bool doGetParent = false);
 Value const* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent = false);
-Value const* getValue(Value& outValueEntity, Enviroment const& env, Line& valueLine);
+RefOrEntityValue getValue(Enviroment const& env, Line& valueLine);
 
 ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& nestName, Enviroment const& env);
 
@@ -68,6 +68,8 @@ void parseValue(Enviroment& env, Line& valueLine);
 Value parseValueInSingleLine(Enviroment const& env, Line& valueLine);
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos);
+std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line);
+std::tuple<RefOrEntityValue, RefOrEntityValue> parseCompareTargetValues(Enviroment const& env, Line const& line, size_t compareOpStart, Value const* pUsedLeftValue, Value const* pUsedRightValue);
 
 std::string expandVariable(std::string & inOutStr, Enviroment const& env);
 
