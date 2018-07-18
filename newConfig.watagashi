@@ -120,10 +120,9 @@ bool10 deny !bool2
 valueIf is Test
 :empty_line
 :if valueIf
-  equal Empty Line Test
+  :local localVar is Empty Line Test
+  equal localVar
     :empty_line
-  equal Apple
-    valueIf is Apple2
   equal Test
   less Orange or greater Grape
     valueIf is Orange
@@ -133,6 +132,33 @@ valueIf is Test
 :unless
   valueIf equal Apple
     unlessMake is OK
+
+###
+  Function Usage
+###
+testFunc define_function
+  to_pass A, B is string
+    C is string by_default Default Text, D by_default
+      MultiLine
+      Comment
+  to_capture
+    str1, ref str2
+  with_contents
+    localVar1 is ${A}, ${B} and ${C} are arguments!
+    :return ${localVar1} and str1 is ${str1}
+
+##
+getName define_function
+  to_pass obj
+  with_contents
+    :return name in obj
+##
+
+NewObject extend [Object]
+  member1 is string
+
+objTest is [NewObject]
+  member1 is 999
 
 libraryPrefix is lib
 librarySuffix is -vc141-mt-s-x64-1_67

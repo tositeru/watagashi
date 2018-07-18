@@ -64,7 +64,8 @@ static OperationBimap const operationBimap = boost::assign::list_of<OperationBim
     ("copy", OperatorType::Copy )
     ("extend", OperatorType::Extend)
     ("push_back", OperatorType::PushBack)
-    ("remove", OperatorType::Remove);
+    ("remove", OperatorType::Remove)
+    ("define_function", OperatorType::DefineFunction);
 
 OperatorType toOperatorType(boost::string_view const& str)
 {
@@ -177,6 +178,51 @@ boost::string_view const toString(Statement type)
     static char const* UNKNOWN = "(unknown)";
     auto it = statementBimap.right.find(type);
     return statementBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
+
+using DefineFunctionOperatorBimap = boost::bimap<boost::string_view, DefineFunctionOperator>;
+static DefineFunctionOperatorBimap const defineFunctionOperatorBimap = boost::assign::list_of<DefineFunctionOperatorBimap::relation>
+    ("to_pass", DefineFunctionOperator::ToPass)
+    ("to_capture", DefineFunctionOperator::ToCapture)
+    ("with_contents", DefineFunctionOperator::WithContents);
+
+DefineFunctionOperator toDefineFunctionOperatorType(boost::string_view const& str)
+{
+    auto it = defineFunctionOperatorBimap.left.find(str);
+    return defineFunctionOperatorBimap.left.end() == it
+        ? DefineFunctionOperator::Unknown
+        : it->get_right();
+}
+
+boost::string_view const toString(DefineFunctionOperator type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = defineFunctionOperatorBimap.right.find(type);
+    return defineFunctionOperatorBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
+
+using ArgumentOperatorBimap = boost::bimap<boost::string_view, ArgumentOperator>;
+static ArgumentOperatorBimap const argumentOperatorBimap = boost::assign::list_of<ArgumentOperatorBimap::relation>
+    ("is", ArgumentOperator::Is)
+    ("by_default", ArgumentOperator::ByDefault);
+
+ArgumentOperator toArgumentOperator(boost::string_view const& str)
+{
+    auto it = argumentOperatorBimap.left.find(str);
+    return argumentOperatorBimap.left.end() == it
+        ? ArgumentOperator::Unknown
+        : it->get_right();
+}
+
+boost::string_view const toString(ArgumentOperator type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = argumentOperatorBimap.right.find(type);
+    return argumentOperatorBimap.right.end() == it
         ? UNKNOWN
         : it->get_left();
 }

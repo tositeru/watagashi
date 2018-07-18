@@ -12,6 +12,7 @@
 #include "objectDefined.h"
 #include "boolean.h"
 #include "branch.h"
+#include "defineFunction.h"
 
 using namespace std;
 
@@ -79,6 +80,13 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
 
     } else if (OperatorType::Remove == opType) {
         //TODO?
+
+    } else if (OperatorType::DefineFunction == opType) {
+        line.resize(p, 0);
+        env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::Function)));
+        env.pushMode(std::make_shared<DefineFunctionParseMode>());
+        auto pMode = env.currentMode();
+        return pMode->parse(env, line);
 
     } else if (OperatorType::Extend == opType) {
         auto objectNameLine = Line(line.get(p), 0, line.length() - p);

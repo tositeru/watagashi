@@ -63,6 +63,8 @@ target_sources(watagashi
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/branch.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/branch.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/doNothing.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/defineFunction.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/defineFunction.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.h"

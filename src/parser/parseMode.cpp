@@ -154,6 +154,24 @@ void closeTopScope(Enviroment& env)
     pCurrentScope->close(env);
 }
 
+std::tuple<StartPos, EndPos> searchArraySeparaterPos(Line const& line, size_t start)
+{
+    // search explicit separator of string array element 
+    for (auto p = start; !line.isEndLine(p + 1); ++p) {
+        auto strView = boost::string_view(line.get(p), 2);
+        if (isExplicitStringArrayElementSeparater(strView)) {
+            auto startPos = line.decrementPos(p, [](auto line, auto p) { return !isSpace(line.get(p)); });
+            return { startPos, p + strView.length() };
+        }
+    }
+
+    auto end = line.incrementPos(start, [](auto line, auto p) {
+        return !isArrayElementSeparater(line.get(p));
+    });
+    auto startPos = line.decrementPos(end, [](auto line, auto p) { return !isSpace(line.get(p)); });
+    return { startPos, end };
+}
+
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
 {
     auto valuePos = line.skipSpace(start);

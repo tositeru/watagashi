@@ -36,11 +36,11 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
                 << "found unknown value type." << MAKE_EXCEPTION;
         }
 
-        MemberDefined memberDefined;
-        memberDefined.type = valueType;
-        Value memberDefiend;
-        memberDefiend = std::move(memberDefined);
-        env.pushScope(std::make_shared<NormalScope>(std::move(nestNames), std::move(memberDefiend)));
+        MemberDefined tmp;
+        tmp.type = valueType;
+        Value memberDefined;
+        memberDefined = std::move(tmp);
+        env.pushScope(std::make_shared<NormalScope>(std::move(nestNames), std::move(memberDefined)));
         p = line.skipSpace(p);
         if (line.isEndLine(p)) {
             return Result::Continue;
@@ -53,12 +53,7 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
                 << "found unknown MemberDefined operator." << MAKE_EXCEPTION;
         }
         p = line.skipSpace(p);
-        if (Value::Type::Array == valueType) {
-            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value().init(Value::Type::Array)));
-        } else {
-            auto initValue = Value().init(valueType);
-            env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, std::move(initValue)));
-        }
+        env.pushScope(std::make_shared<NormalScope>(std::list<std::string>{""}, Value().init(valueType)));
         if (line.isEndLine(p)) {
             return Result::Continue;
         }

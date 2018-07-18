@@ -102,6 +102,7 @@ void showValue(Value const& value)
     case Value::Type::Bool:     cout << "Bool: " << value.toString() << endl; break;
     case Value::Type::String:   cout << "String: '" << value.get<Value::string>() << "'" << endl; break;
     case Value::Type::Number:   cout << "Number: " << value.get<Value::number>() << endl; break;
+    case Value::Type::Function: cout << "Function:" << value.toString() << endl; break;
     case Value::Type::Array:
     {
         auto& arr = value.get<Value::array>();

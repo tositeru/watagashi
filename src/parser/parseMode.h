@@ -33,7 +33,8 @@ public:
     virtual Result preprocess(Enviroment& env, Line& line);
 };
 
-using EndPos = size_t;
+using StartPos = size_t;
+using EndPos = StartPos;
 
 void closeTopScope(Enviroment& env);
 
@@ -66,9 +67,13 @@ ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& n
 
 void parseValue(Enviroment& env, Line& valueLine);
 Value parseValueInSingleLine(Enviroment const& env, Line& valueLine);
+std::tuple<StartPos, EndPos> searchArraySeparaterPos(Line const& line, size_t start);
+
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos);
+
 std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line);
+
 std::tuple<RefOrEntityValue, RefOrEntityValue> parseCompareTargetValues(Enviroment const& env, Line const& line, size_t compareOpStart, Value const* pUsedLeftValue, Value const* pUsedRightValue);
 
 std::string expandVariable(std::string & inOutStr, Enviroment const& env);

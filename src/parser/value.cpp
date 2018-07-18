@@ -176,6 +176,21 @@ Value::Value(Reference const& right)
     , pData(std::make_unique<InnerData>(right))
 {}
 
+Value::Value(Function const& right)
+    : type(Type::Function)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(Argument const& right)
+    : type(Type::Argument)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
+Value::Value(Capture const& right)
+    : type(Type::Capture)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
 Value::Value(NoneValue && right)
     : type(Type::None)
     , pData(std::make_unique<InnerData>(std::move(right)))
@@ -221,18 +236,37 @@ Value::Value(Reference && right)
     , pData(std::make_unique<InnerData>(std::move(right)))
 {}
 
+Value::Value(function && right)
+    : type(Type::Function)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(argument && right)
+    : type(Type::Argument)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+Value::Value(capture && right)
+    : type(Type::Capture)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
+
 Value& Value::init(Type type_)
 {
     switch (type_) {
     case Type::None:   this->pData->data = NoneValue(); break;
     case Type::Bool:   this->pData->data = false; break;
-    case Type::String: this->pData->data = ""; break;
+    case Type::String: this->pData->data = ""s; break;
     case Type::Number: this->pData->data = 0.0; break;
     case Type::Array:  this->pData->data = array{}; break;
     case Type::Object: this->pData->data = object(&Value::objectDefined); break;
     case Type::ObjectDefined: this->pData->data = ObjectDefined{}; break;
     case Type::MemberDefined: this->pData->data = MemberDefined{}; break;
     case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;
+    case Type::Function: this->pData->data = Function(); break;
+    case Type::Argument: this->pData->data = Argument(); break;
+    case Type::Capture: this->pData->data = Capture(); break;
     }
     this->type = type_;
     return *this;
@@ -464,7 +498,10 @@ static const ValueTypeBimap valueTypeBimap = boost::assign::list_of<ValueTypeBim
     ("number", Value::Type::Number)
     ("array", Value::Type::Array)
     ("object", Value::Type::Object)
-    ("objectDefined", Value::Type::ObjectDefined);
+    ("objectDefined", Value::Type::ObjectDefined)
+    ("memberDefined", Value::Type::MemberDefined)
+    ("reference", Value::Type::Reference)
+    ("function", Value::Type::Function);
 
 boost::string_view Value::toString(Type type)
 {
@@ -535,6 +572,27 @@ public:
             separater = '.';
         }
         return "[Reference](" + name + ")";
+    }
+
+    std::string operator()(Function const& function)const
+    {
+        auto str = "[Function]("s;
+        str += "args[ ";
+        for (auto&& arg : function.arguments) {
+            str += arg.name + ":" + Value::toString(arg.defaultValue.type).to_string() + " ";
+        }
+        str += "])";
+        return str;
+    }
+
+    std::string operator()(Argument const& arg)const
+    {
+        return "[Argument](" + arg.name + ":" + Value::toString(arg.defaultValue.type).to_string() + ")";
+    }
+
+    std::string operator()(Capture const& capture)const
+    {
+        return "[Capture](" + Value::toString(capture.value.value().type).to_string() + ")";
     }
 
 };
@@ -647,5 +705,27 @@ Value const& RefOrEntityValue::value()const
 {
     return boost::apply_visitor(GetValueFromRefOrEntityValue(), this->mData);
 }
+
+//-----------------------------------------------------------------------
+//
+//  struct Argument
+//
+//-----------------------------------------------------------------------
+
+Argument::Argument()
+    : name()
+    , type(Value::Type::None)
+    , defaultValue(Value::none)
+{}
+
+//-----------------------------------------------------------------------
+//
+//  struct Capture
+//
+//-----------------------------------------------------------------------
+
+Capture::Capture()
+    : value(Value::none)
+{}
 
 }

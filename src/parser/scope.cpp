@@ -5,6 +5,8 @@
 #include "parseMode.h"
 #include "enviroment.h"
 
+#include "mode/defineFunction.h"
+
 namespace parser
 {
 //----------------------------------------------------------------------------------
@@ -15,6 +17,7 @@ namespace parser
 
 void IScope::close(Enviroment& env)
 {
+    // postprocess
     if (Value::Type::ObjectDefined == this->valueType()) {
         auto& objectDefined = this->value().get<ObjectDefined>();
         objectDefined.name = this->nestName().back();
@@ -31,51 +34,59 @@ void IScope::close(Enviroment& env)
     } else if (Value::Type::String == this->valueType()) {
         auto& str = this->value().get<Value::string>();
         str = expandVariable(str, env);
+    } else if (Value::Type::Function == this->valueType()) {
+        env.popMode();
     }
 
     // set parsing value to the parent
-    Value* pParentValue = nullptr;
-    if (2 <= this->nestName().size()) {
-        pParentValue = searchValue(this->nestName(), env, true);
-    } else {
-        pParentValue = &env.currentScope().value();
-    }
-    switch (pParentValue->type) {
-    case Value::Type::Object:
-        if (!pParentValue->addMember(*this)) {
-            throw MakeException<SyntaxException>()
-                << "Failed to add an element to the current scope object." << MAKE_EXCEPTION;
-        }
+    if (env.currentScope().type() == IScope::Type::DefineFunction) {
+        auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
+        defineFunctionScope.setValueToCurrentElement(this->value());
+        env.popMode();
 
-        break;
-    case Value::Type::Array:
-        if ("" == this->nestName().back()) {
-            pParentValue->pushValue(this->value());
+    } else {
+        Value* pParentValue = nullptr;
+        if (2 <= this->nestName().size()) {
+            pParentValue = searchValue(this->nestName(), env, true);
         } else {
+            pParentValue = &env.currentScope().value();
+        }
+        switch (pParentValue->type) {
+        case Value::Type::Object:
             if (!pParentValue->addMember(*this)) {
                 throw MakeException<SyntaxException>()
-                    << "Failed to add an element to the current scope array because it was a index out of range."
+                    << "Failed to add an element to the current scope object." << MAKE_EXCEPTION;
+            }
+            break;
+        case Value::Type::Array:
+            if ("" == this->nestName().back()) {
+                pParentValue->pushValue(this->value());
+            } else {
+                if (!pParentValue->addMember(*this)) {
+                    throw MakeException<SyntaxException>()
+                        << "Failed to add an element to the current scope array because it was a index out of range."
+                        << MAKE_EXCEPTION;
+                }
+            }
+            break;
+        case Value::Type::ObjectDefined:
+            if (!pParentValue->addMember(*this)) {
+                throw MakeException<SyntaxException>()
+                    << "Failed to add an element to the current scope object."
                     << MAKE_EXCEPTION;
             }
+            break;
+        case Value::Type::MemberDefined:
+        {
+            auto& memberDefined = pParentValue->get<MemberDefined>();
+            memberDefined.defaultValue = this->value();
+            break;
         }
-        break;
-    case Value::Type::ObjectDefined:
-        if (!pParentValue->addMember(*this)) {
+        default:
             throw MakeException<SyntaxException>()
-                << "Failed to add an element to the current scope object."
+                << "The current value can not have children."
                 << MAKE_EXCEPTION;
         }
-        break;
-    case Value::Type::MemberDefined:
-    {
-        auto& memberDefined = pParentValue->get<MemberDefined>();
-        memberDefined.defaultValue = this->value();
-        break;
-    }
-    default:
-        throw MakeException<SyntaxException>()
-            << "The current value can not have children."
-            << MAKE_EXCEPTION;
     }
 }
 
@@ -501,6 +512,107 @@ Value const& DummyScope::value()const
 Value::Type DummyScope::valueType()const
 {
     return Value::Type::None;
+}
+
+//----------------------------------------------------------------------------------
+//
+//  class DefineFunctionScope
+//
+//----------------------------------------------------------------------------------
+DefineFunctionScope::DefineFunctionScope(IScope& parentScope, DefineFunctionOperator op)
+    : mParentScope(parentScope)
+    , mOp(op)
+{
+}
+
+IScope::Type DefineFunctionScope::type()const
+{
+    return Type::DefineFunction;
+}
+
+void DefineFunctionScope::close(Enviroment& env)
+{
+    if (Value::Type::Function != this->mParentScope.valueType()) {
+        AWESOME_THROW(FatalException)
+            << "The type of value in parent scope of DefineFunctionScope must be Function...";
+    }
+
+    auto& function = this->mParentScope.value().get<Function>();
+    switch (this->mOp) {
+    case DefineFunctionOperator::ToPass:
+        function.arguments.reserve(this->mElements.size());
+        for (auto&& e : this->mElements) {
+            function.arguments.emplace_back(e.get<Value::argument>());
+        }
+        break;
+    case DefineFunctionOperator::ToCapture:
+        function.captures.reserve(this->mElements.size());
+        for (auto&& e : this->mElements) {
+            function.captures.emplace_back(e.get<Value::capture>());
+        }
+        break;
+    case DefineFunctionOperator::WithContents:
+    {
+        size_t contentLength = 0u;
+        for (auto&& e : this->mElements) {
+            contentLength += e.get<Value::string>().size();
+        }
+        function.contents.clear();
+        function.contents.reserve(contentLength);
+        for (auto&& e : this->mElements) {
+            function.contents += e.get<Value::string>();
+        }
+        break;
+    }
+    default:
+        AWESOME_THROW(std::runtime_error)
+            << "use unknown DefineFunctionOperator in close()...";
+    }
+
+    if (auto pDefineFunctionParser = dynamic_cast<DefineFunctionParseMode*>(env.currentMode().get())) {
+        pDefineFunctionParser->resetMode();
+    }
+}
+
+std::list<std::string> const& DefineFunctionScope::nestName()const
+{
+    return this->mParentScope.nestName();
+}
+
+Value& DefineFunctionScope::value()
+{
+    return this->mParentScope.value();
+}
+
+Value const& DefineFunctionScope::value()const
+{
+    return this->mParentScope.value();
+}
+
+Value::Type DefineFunctionScope::valueType()const
+{
+    return this->mParentScope.valueType();
+}
+
+void DefineFunctionScope::addElememnt(Value&& element)
+{
+    this->mElements.push_back(std::move(element));
+}
+
+void DefineFunctionScope::setValueToCurrentElement(Value const& value)
+{
+    auto& element = this->mElements.back();
+    switch (this->mOp) {
+    case DefineFunctionOperator::ToPass:
+    {
+        auto& arg = element.get<Argument>();
+        arg.defaultValue = value;
+        break;
+    }
+    default:
+        AWESOME_THROW(FatalException)
+            << "don't set value to current element at " << toString(this->mOp) << ".";
+    }
 }
 
 }

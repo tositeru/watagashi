@@ -41,6 +41,7 @@ enum class OperatorType
     Extend,
     PushBack,
     Remove,
+    DefineFunction
 };
 OperatorType toOperatorType(boost::string_view const& str);
 boost::string_view const toString(OperatorType type);
@@ -86,6 +87,24 @@ enum class Statement {
 };
 Statement toStatementType(boost::string_view const& str);
 boost::string_view const toString(Statement type);
+
+enum class DefineFunctionOperator {
+    Unknown,
+    ToPass,
+    ToCapture,
+    WithContents,
+};
+DefineFunctionOperator toDefineFunctionOperatorType(boost::string_view const& str);
+boost::string_view const toString(DefineFunctionOperator type);
+
+enum class ArgumentOperator
+{
+    Unknown,
+    Is,
+    ByDefault,
+};
+ArgumentOperator toArgumentOperator(boost::string_view const& str);
+boost::string_view const toString(ArgumentOperator type);
 
 struct MakeExceptionCommand {};
 
@@ -180,6 +199,15 @@ class BooleanException : public ParserException
 public:
     BooleanException(std::string const& message)
         : ParserException("!!boolean error!! " + message)
+    {}
+
+};
+
+class FatalException : public ParserException
+{
+public:
+    FatalException(std::string const& message)
+        : ParserException("!!fatal error!! " + message)
     {}
 
 };

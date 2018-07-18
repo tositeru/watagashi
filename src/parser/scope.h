@@ -22,6 +22,7 @@ public:
         Boolean,
         Branch,
         Dummy,
+        DefineFunction,
     };
 
 public:
@@ -152,6 +153,28 @@ public:
     Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const override;
+
+};
+
+class DefineFunctionScope : public IScope
+{
+    IScope& mParentScope;
+    DefineFunctionOperator mOp;
+    std::vector<Value> mElements;
+
+public:
+    DefineFunctionScope(IScope& parentScope, DefineFunctionOperator op);
+
+    Type type()const override;
+    void close(Enviroment& env)override;
+
+    std::list<std::string> const& nestName()const override;
+    Value& value() override;
+    Value const& value()const override;
+    Value::Type valueType()const;
+
+    void addElememnt(Value&& element);
+    void setValueToCurrentElement(Value const& value);
 
 };
 

@@ -57,6 +57,13 @@ size_t Line::incrementPos(size_t start, std::function<bool(Line const& line, siz
     return p;
 }
 
+size_t Line::decrementPos(size_t start, std::function<bool(Line const& line, size_t p)> continueLoop)const
+{
+    auto p = start;
+    for (; 0 < p && continueLoop(*this, p); --p) {}
+    return p;
+}
+
 bool Line::find(size_t start, std::function<bool(Line const& line, size_t p)> didFound)const
 {
     bool result = false;
@@ -69,6 +76,20 @@ bool Line::find(size_t start, std::function<bool(Line const& line, size_t p)> di
 size_t Line::skipSpace(size_t start)const
 {
     return this->incrementPos(start, [](auto line, auto p) { return isSpace(line.get(p)); });
+}
+
+size_t Line::skipSpaceInOppositeDirection(size_t start)const
+{
+    return this->decrementPos(start, [](auto line, auto p) {
+        return isSpace(line.get(p));
+    });
+}
+
+std::tuple<size_t, size_t> Line::getRangeSeparatedBySpace(size_t start)const
+{
+    auto s = this->skipSpace(start);
+    auto e = this->incrementPos(s, [](auto line, auto p) { return !isSpace(line.get(p));  });
+    return {s, e};
 }
 
 boost::string_view Line::getIndent()const

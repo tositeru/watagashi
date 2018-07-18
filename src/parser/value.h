@@ -49,6 +49,15 @@ struct Reference
     Value const* ref()const;
 };
 
+struct Argument;
+struct Capture;
+struct Function
+{
+    std::vector<Argument> arguments;
+    std::vector<Capture> captures;
+    std::string contents;
+};
+
 struct Value
 {
     enum class Type
@@ -62,12 +71,18 @@ struct Value
         ObjectDefined,
         MemberDefined,
         Reference,
+        Function,
+        Argument,
+        Capture,
     };
 
     using string = std::string;
     using number = double;
     using array = std::vector<Value>;
     using object = Object;
+    using function = Function;
+    using argument = Argument;
+    using capture = Capture;
 
     static Value const none;
     static Value const emptyStr;
@@ -96,6 +111,9 @@ struct Value
     Value(ObjectDefined const& right);
     Value(MemberDefined const& right);
     Value(Reference const& right);
+    Value(Function const& right);
+    Value(Argument const& right);
+    Value(Capture const& right);
 
     Value(NoneValue && right);
     Value(bool && right);
@@ -106,6 +124,9 @@ struct Value
     Value(ObjectDefined && right);
     Value(MemberDefined && right);
     Value(Reference && right);
+    Value(Function && right);
+    Value(Argument && right);
+    Value(Capture && right);
 
     Value& init(Type type_);
 
@@ -164,6 +185,36 @@ struct MemberDefined
     MemberDefined(Value::Type type, Value && defaultValue);
 };
 
+class RefOrEntityValue
+{
+public:
+    RefOrEntityValue(Value const& value);
+    RefOrEntityValue(Value const* pValue);
+
+    Value const& value()const;
+
+private:
+    boost::variant<
+        Value,
+        Value const*> mData;
+};
+
+struct Argument
+{
+    std::string name;
+    Value::Type type;
+    Value defaultValue;
+
+    Argument();
+
+};
+
+struct Capture
+{
+    RefOrEntityValue value;
+    Capture();
+};
+
 struct Value::InnerData
 {
     // TODO use std::variant after all
@@ -176,7 +227,10 @@ struct Value::InnerData
         object,
         ObjectDefined,
         MemberDefined,
-        Reference> data;
+        Reference,
+        function,
+        argument,
+        capture> data;
 
     InnerData()
         : data(NoneValue())
@@ -202,20 +256,6 @@ struct Value::InnerData
         // TODO use std::variant after all
         this->data = right;
     }
-};
-
-class RefOrEntityValue
-{
-public:
-    RefOrEntityValue(Value const& value);
-    RefOrEntityValue(Value const* pValue);
-
-    Value const& value()const;
-
-private:
-    boost::variant<
-        Value,
-        Value const*> mData;
 };
 
 }
