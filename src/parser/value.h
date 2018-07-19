@@ -37,7 +37,7 @@ struct Object
 
     Object(ObjectDefined const* pDefined);
 
-    bool applyObjectDefined();
+    void applyObjectDefined();
 
 };
 

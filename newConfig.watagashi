@@ -171,8 +171,8 @@ watagashi is [Project]
       ignores are main.c
   fileFilters are [FileFilter]
       filepath is @main.cpp
-      preprocess is echo compile main.cpp
-      postprocess is echo finish to compile main.cpp
+      preprocess are echo compile main.cpp
+      postprocess are echo finish to compile main.cpp
   compiler is clang++
   compileOptions are -O2, -std=c++17
   includeDirectories are C:\Boost\include\boost-1_67

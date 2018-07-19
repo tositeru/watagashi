@@ -85,7 +85,7 @@ Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
     try {
         if (2 <= env.scopeStack.size()) {
             while (2 <=  env.scopeStack.size()) {
-                closeTopScope(env);
+                env.closeTopScope();
             }
         }
     } catch (ParserException& e) {

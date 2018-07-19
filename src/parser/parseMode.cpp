@@ -63,7 +63,7 @@ IParseMode::Result IParseMode::preprocess(Enviroment& env, Line& line)
     if (resultCompared < 0) {
         while (0 != env.compareIndentLevel(level)) {
             // close top scope.
-            closeTopScope(env);
+            env.closeTopScope();
         }
         if (env.currentMode().get() != this) {
             return Result::Redo;
@@ -143,17 +143,6 @@ CommentType evalComment(Enviroment& env, Line& line)
     return CommentType::None;
 }
 
-void closeTopScope(Enviroment& env)
-{
-    // note: At the timing of closing the scope,
-    //  we assign values to appropriate places.
-    // etc) object member, array element or other places.
-
-    auto pCurrentScope = env.currentScopePointer();
-    env.popScope();
-    pCurrentScope->close(env);
-}
-
 std::tuple<StartPos, EndPos> searchArraySeparaterPos(Line const& line, size_t start)
 {
     // search explicit separator of string array element 
@@ -207,7 +196,7 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
         }
         endPos = getEndPos(line, valuePos);
 
-        closeTopScope(env);
+        env.closeTopScope();
     } while (!line.isEndLine(valuePos));
     return valuePos;
 }

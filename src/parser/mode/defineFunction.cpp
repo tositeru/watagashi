@@ -75,14 +75,8 @@ IParseMode::Result DefineFunctionParseMode::parseByPassMode(Enviroment& env, Lin
     auto pCurrentScope = env.currentScopePointer();
     foreachArguments(line, 0, [&](auto line) {
         while (pCurrentScope != env.currentScopePointer()) {
-            closeTopScope(env);
+            env.closeTopScope();
         }
-        //while (true) {
-        //    if (auto p = dynamic_cast<DefineFunctionParseMode*>(env.currentMode().get())) {
-        //        break;
-        //    }
-        //    env.popMode();
-        //}
 
         auto nameEnd = line.incrementPos(0, [](auto line, auto p) {
             return isNameChar(line.get(p));

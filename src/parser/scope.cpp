@@ -25,11 +25,7 @@ void IScope::close(Enviroment& env)
 
     } else if (Value::Type::Object == this->valueType()) {
         auto& obj = this->value().get<Value::object>();
-        if (!obj.applyObjectDefined()) {
-            std::string fullname = toNameString(this->nestName());
-            throw MakeException<DefinedObjectException>()
-                << "An undefined member exists in '" << fullname << "." << MAKE_EXCEPTION;
-        }
+        obj.applyObjectDefined();
 
     } else if (Value::Type::String == this->valueType()) {
         auto& str = this->value().get<Value::string>();

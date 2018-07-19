@@ -36,8 +36,6 @@ public:
 using StartPos = size_t;
 using EndPos = StartPos;
 
-void closeTopScope(Enviroment& env);
-
 int evalIndent(Enviroment& env, Line& line);
 CommentType evalComment(Enviroment& env, Line& line);
 

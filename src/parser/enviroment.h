@@ -26,6 +26,7 @@ struct Enviroment
     void pushScope(std::shared_ptr<IScope> pScope);
 
     void popScope();
+    void closeTopScope();
 
     std::shared_ptr<IParseMode> currentMode();
     IScope& currentScope();

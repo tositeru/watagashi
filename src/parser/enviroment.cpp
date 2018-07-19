@@ -46,6 +46,17 @@ void Enviroment::popScope()
     this->scopeStack.pop_back();
 }
 
+void Enviroment::closeTopScope()
+{
+    // note: At the timing of closing the scope,
+    //  we assign values to appropriate places.
+    // etc) object member, array element or other places.
+
+    auto pCurrentScope = this->currentScopePointer();
+    this->popScope();
+    pCurrentScope->close(*this);
+}
+
 std::shared_ptr<IParseMode> Enviroment::currentMode() {
     return this->modeStack.back();
 }

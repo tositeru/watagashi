@@ -35,23 +35,27 @@ Object::Object(ObjectDefined const* pDefined)
 {
 }
 
-bool Object::applyObjectDefined()
+void Object::applyObjectDefined()
 {
     for (auto&& [name, memberDefined] : this->pDefined->members) {
-        auto it = this->members.find(name);
-        if (this->members.end() != it) {
-            continue;
-        }
-        if (Value::Type::None == memberDefined.defaultValue.type) {
-            cerr << "defined object error: '"
-                << name << "' in '"
-                << (this->pDefined->name.empty() ? "(Anonymous)" : this->pDefined->name)
-                << "' must set value." << endl;
+        auto memberIt = this->members.find(name);
+        if (memberIt == this->members.end()) {
+            if (memberDefined.defaultValue.type == Value::Type::None) {
+                AWESOME_THROW(DefinedObjectException)
+                    << name << "' in '" << (this->pDefined->name.empty() ? "(Anonymous)" : this->pDefined->name)
+                    << "' must set value.";
+            } else {
+                this->members.insert({name, memberDefined.defaultValue });
+            }
         } else {
-            this->members.insert({name, memberDefined.defaultValue });
+             if (memberDefined.type != memberIt->second.type) {
+                 AWESOME_THROW(DefinedObjectException)
+                     << "Type of member value and type of setting value is diffrent...\n"
+                     << "target: '" << name << "' in '" << (this->pDefined->name.empty() ? "(Anonymous)" : this->pDefined->name) << "'"
+                     << " memberType=" << Value::toString(memberDefined.type) << " setting=" << Value::toString(memberIt->second.type);
+             }
         }
     }
-    return true;
 }
 
 //-----------------------------------------------------------------------
@@ -480,7 +484,10 @@ public:
     template<>
     void operator()(std::string& str)const
     {
-        str += "\n" + this->mStringView.to_string();
+        if (str.empty() >= 1) {
+            str += "\n";
+        }
+        str += this->mStringView.to_string();
     }
 
 };
