@@ -273,7 +273,7 @@ std::string toNameString(std::list<boost::string_view> const& nestName)
 
 bool isReference(std::string const& str)
 {
-    if ('$' != str[0] && '|' == str[1]) {
+    if ('$' != str[0] && '{' == str[1]) {
         return false;
     }
     auto end = str.find('}', 0);

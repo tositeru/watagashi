@@ -50,11 +50,11 @@ struct Reference
 };
 
 struct Argument;
-struct Capture;
+struct Value;
 struct Function
 {
     std::vector<Argument> arguments;
-    std::vector<Capture> captures;
+    std::vector<Value> captures;
     std::string contents;
 };
 
@@ -73,7 +73,6 @@ struct Value
         Reference,
         Function,
         Argument,
-        Capture,
     };
 
     using string = std::string;
@@ -82,7 +81,6 @@ struct Value
     using object = Object;
     using function = Function;
     using argument = Argument;
-    using capture = Capture;
 
     static Value const none;
     static Value const emptyStr;
@@ -113,7 +111,6 @@ struct Value
     Value(Reference const& right);
     Value(Function const& right);
     Value(Argument const& right);
-    Value(Capture const& right);
 
     Value(NoneValue && right);
     Value(bool && right);
@@ -126,7 +123,6 @@ struct Value
     Value(Reference && right);
     Value(Function && right);
     Value(Argument && right);
-    Value(Capture && right);
 
     Value& init(Type type_);
 
@@ -209,12 +205,6 @@ struct Argument
 
 };
 
-struct Capture
-{
-    RefOrEntityValue value;
-    Capture();
-};
-
 struct Value::InnerData
 {
     // TODO use std::variant after all
@@ -229,8 +219,7 @@ struct Value::InnerData
         MemberDefined,
         Reference,
         function,
-        argument,
-        capture> data;
+        argument> data;
 
     InnerData()
         : data(NoneValue())

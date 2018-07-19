@@ -173,6 +173,7 @@ public:
     Value const& value()const override;
     Value::Type valueType()const;
 
+    void addElememnt(Value const& element);
     void addElememnt(Value&& element);
     void setValueToCurrentElement(Value const& value);
 

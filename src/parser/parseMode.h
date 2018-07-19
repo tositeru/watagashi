@@ -55,6 +55,8 @@ std::tuple<std::list<boost::string_view>, EndPos> parseName(Line const& line, si
 std::tuple<std::list<boost::string_view>, EndPos> parseName(Line const& line, size_t start, bool &outIsSuccess);
 std::tuple<std::list<boost::string_view>, EndPos> parseObjectName(Enviroment const& env, Line& line, size_t start);
 
+std::list<std::string> convertToAbsolutionNestName(std::list<std::string> const& nestName, Enviroment const& env);
+
 Value* searchValue(std::list<std::string> const& nestName, Enviroment & env, bool doGetParent = false);
 Value const* searchValue(std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent = false);
 Value* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment & env, bool doGetParent = false);
@@ -68,6 +70,7 @@ Value parseValueInSingleLine(Enviroment const& env, Line& valueLine);
 std::tuple<StartPos, EndPos> searchArraySeparaterPos(Line const& line, size_t start);
 
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
+EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Line const&)> predicate);
 Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos);
 
 std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line);

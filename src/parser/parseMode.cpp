@@ -201,6 +201,23 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
     return valuePos;
 }
 
+EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Line const&)> predicate)
+{
+    auto pos = start;
+    while (!line.isEndLine(pos)) {
+        auto startPos = line.skipSpace(pos);
+        auto separaterRange = searchArraySeparaterPos(line, startPos);
+        auto endPos = std::get<1>(separaterRange);
+        auto elementLine = Line(line.get(startPos), 0, endPos - startPos);
+        pos = endPos + 1;
+
+        if (!predicate(elementLine)) {
+            break;
+        }
+    }
+    return pos;
+}
+
 std::tuple<std::list<boost::string_view>, EndPos> parseObjectName(Enviroment const& env, Line& line, size_t start)
 {
     auto nameLine = Line(line.get(start), 0, line.length() - start);
@@ -221,6 +238,42 @@ std::tuple<std::list<boost::string_view>, EndPos> parseObjectName(Enviroment con
     auto [nestName, endPos] = parseName(nameLine, 0);
     endPos = endPos + 1 + start;
     return { std::move(nestName), endPos };
+}
+
+std::list<std::string> convertToAbsolutionNestName(std::list<std::string> const& nestName, Enviroment const& env)
+{
+    assert(!nestName.empty());
+
+    IScope const* pTopScope = nullptr;
+    // Find the starting point of the appropriate place.
+    auto rootName = nestName.front();
+    for (auto&& pScope : boost::adaptors::reverse(env.scopeStack)) {
+        if (pScope->nestName().back() == rootName) {
+            pTopScope = pScope.get();
+            break;
+        }
+        if (pScope->value().isExsitChild(rootName)) {
+            pTopScope = pScope.get();
+            break;
+        }
+    }
+    if (nullptr == pTopScope) {
+        if (!env.externObj.isExsitChild(rootName)) {
+            throw MakeException<ScopeSearchingException>()
+                << "Don't found '" << rootName << "' in enviroment."
+                << MAKE_EXCEPTION;
+        }
+        return nestName;
+    }
+
+    std::list<std::string> absolutionNestName = nestName;
+    for (auto&& pScope : env.scopeStack) {
+        absolutionNestName.push_front(pScope->nestName().back());
+        if (pScope.get() == pTopScope) {
+            break;
+        }
+    }
+    return absolutionNestName;
 }
 
 ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& nestName, Enviroment const& env)

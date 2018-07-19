@@ -544,7 +544,7 @@ void DefineFunctionScope::close(Enviroment& env)
     case DefineFunctionOperator::ToCapture:
         function.captures.reserve(this->mElements.size());
         for (auto&& e : this->mElements) {
-            function.captures.emplace_back(e.get<Value::capture>());
+            function.captures.emplace_back(e);
         }
         break;
     case DefineFunctionOperator::WithContents:
@@ -557,6 +557,7 @@ void DefineFunctionScope::close(Enviroment& env)
         function.contents.reserve(contentLength);
         for (auto&& e : this->mElements) {
             function.contents += e.get<Value::string>();
+            function.contents += "\n";
         }
         break;
     }
@@ -588,6 +589,11 @@ Value const& DefineFunctionScope::value()const
 Value::Type DefineFunctionScope::valueType()const
 {
     return this->mParentScope.valueType();
+}
+
+void DefineFunctionScope::addElememnt(Value const& element)
+{
+    this->mElements.push_back(element);
 }
 
 void DefineFunctionScope::addElememnt(Value&& element)

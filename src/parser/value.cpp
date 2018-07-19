@@ -83,7 +83,9 @@ MemberDefined::MemberDefined(Value::Type type, Value && defaultValue)
 Reference::Reference(Enviroment const* pEnv, std::list<std::string> const& nestName)
     : pEnv(pEnv)
     , nestName(nestName)
-{}
+{
+    this->nestName = convertToAbsolutionNestName(nestName, *pEnv);
+}
 
 Value const* Reference::ref()const
 {
@@ -190,11 +192,6 @@ Value::Value(Argument const& right)
     , pData(std::make_unique<InnerData>(right))
 {}
 
-Value::Value(Capture const& right)
-    : type(Type::Capture)
-    , pData(std::make_unique<InnerData>(right))
-{}
-
 Value::Value(NoneValue && right)
     : type(Type::None)
     , pData(std::make_unique<InnerData>(std::move(right)))
@@ -250,12 +247,6 @@ Value::Value(argument && right)
     , pData(std::make_unique<InnerData>(std::move(right)))
 {}
 
-Value::Value(capture && right)
-    : type(Type::Capture)
-    , pData(std::make_unique<InnerData>(std::move(right)))
-{}
-
-
 Value& Value::init(Type type_)
 {
     switch (type_) {
@@ -270,7 +261,6 @@ Value& Value::init(Type type_)
     case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;
     case Type::Function: this->pData->data = Function(); break;
     case Type::Argument: this->pData->data = Argument(); break;
-    case Type::Capture: this->pData->data = Capture(); break;
     }
     this->type = type_;
     return *this;
@@ -596,12 +586,6 @@ public:
     {
         return "[Argument](" + arg.name + ":" + Value::toString(arg.defaultValue.type).to_string() + ")";
     }
-
-    std::string operator()(Capture const& capture)const
-    {
-        return "[Capture](" + Value::toString(capture.value.value().type).to_string() + ")";
-    }
-
 };
 
 std::string Value::toString()const
@@ -723,16 +707,6 @@ Argument::Argument()
     : name()
     , type(Value::Type::None)
     , defaultValue(Value::none)
-{}
-
-//-----------------------------------------------------------------------
-//
-//  struct Capture
-//
-//-----------------------------------------------------------------------
-
-Capture::Capture()
-    : value(Value::none)
 {}
 
 }

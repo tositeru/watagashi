@@ -155,7 +155,7 @@ getName define_function
 ##
 
 NewObject extend [Object]
-  member1 is string
+  member1 is number
 
 objTest is [NewObject]
   member1 is 999

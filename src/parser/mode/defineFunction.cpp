@@ -50,30 +50,12 @@ IParseMode::Result DefineFunctionParseMode::parseByDefaultMode(Enviroment& env, 
     return this->parse(env, nextModeLine);
 }
 
-
-EndPos foreachArguments(Line const& line, size_t start, std::function<bool(Line const&)> predicate)
-{
-    auto pos = start;
-    while (!line.isEndLine(pos)) {
-        auto startPos = line.skipSpace(pos);
-        auto separaterRange = searchArraySeparaterPos(line, startPos);
-        auto endPos = std::get<1>(separaterRange);
-        auto elementLine = Line(line.get(startPos), 0, endPos - startPos);
-        pos = endPos+1;
-
-        if (!predicate(elementLine)) {
-            break;
-        }
-    }
-    return pos;
-}
-
 IParseMode::Result DefineFunctionParseMode::parseByPassMode(Enviroment& env, Line& line)
 {
     assert(IScope::Type::DefineFunction == env.currentScope().type());
     auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
     auto pCurrentScope = env.currentScopePointer();
-    foreachArguments(line, 0, [&](auto line) {
+    foreachArrayElement(line, 0, [&](auto line) {
         while (pCurrentScope != env.currentScopePointer()) {
             env.closeTopScope();
         }
@@ -136,6 +118,26 @@ IParseMode::Result DefineFunctionParseMode::parseByCaptureMode(Enviroment& env, 
 {
     assert(IScope::Type::DefineFunction == env.currentScope().type());
     auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
+    foreachArrayElement(line, 0, [&](auto elementLine) {
+        auto [headWordStart, headWordEnd] = elementLine.getRangeSeparatedBySpace(0);
+        auto headWord = elementLine.substr(headWordStart, headWordEnd - headWordStart);
+        bool isRef = false;
+        size_t nameStart = 0;
+        if (headWord == "ref") {
+            isRef = true;
+            nameStart = headWordEnd;
+        }
+        auto [nestNameView, nameEndPos] = parseName(elementLine, nameStart);
+        auto nestName = toStringList(nestNameView);
+        if (isRef) {
+            Reference ref(&env, nestName);
+            defineFunctionScope.addElememnt(ref);
+        } else {
+            auto const* pValue = searchValue(nestName, const_cast<Enviroment const&>(env));
+            defineFunctionScope.addElememnt(*pValue);
+        }
+        return true;
+    });
     return Result::Continue;
 }
 
@@ -143,6 +145,8 @@ IParseMode::Result DefineFunctionParseMode::parseByContentsMode(Enviroment& env,
 {
     assert(IScope::Type::DefineFunction == env.currentScope().type());
     auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
+    defineFunctionScope.addElememnt(Value(line.string_view().to_string()));
+
     return Result::Continue;
 }
 
