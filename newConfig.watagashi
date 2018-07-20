@@ -120,9 +120,10 @@ bool10 deny !bool2
 valueIf is Test
 :empty_line
 :if valueIf
-  :local localVar is Empty Line Test
+  :local localVar is Test
   equal localVar
     :empty_line
+    valueIf is local var test
   equal Test
   less Orange or greater Grape
     valueIf is Orange

@@ -11,6 +11,10 @@ Line::Line(char const* source_, size_t begin_, size_t end)
     , mLength(end - begin_)
 {}
 
+Line::Line(Line const& other, size_t begin_)
+    : Line(other.get(begin_), 0, other.length()-begin_)
+{}
+
 void Line::resize(size_t beginOffset, size_t endOffset)
 {
     this->mBegin += beginOffset;

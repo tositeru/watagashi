@@ -3,6 +3,8 @@
 #include "../enviroment.h"
 #include "../line.h"
 
+#include "normal.h"
+
 namespace parser
 {
 
@@ -11,6 +13,12 @@ IParseMode::Result BranchParseMode::parse(Enviroment& env, Line& line)
     assert(IScope::Type::Branch == env.currentScope().type());
 
     auto& branchScope = dynamic_cast<BranchScope&>(env.currentScope());
+
+    if(*line.get(0) == ':') {
+        auto statementLine = line;
+        statementLine.resize(1, 0);
+        return parseStatement(env, statementLine);
+    }
 
     bool isElse = false;
     if (line.length() == 4) {
@@ -54,5 +62,25 @@ IParseMode::Result BranchParseMode::parse(Enviroment& env, Line& line)
     return Result::Continue;
 }
 
+IParseMode::Result BranchParseMode::parseStatement(Enviroment& env, Line& line)
+{
+    auto statementEnd = line.incrementPos(0, [](auto line, auto pos) {
+        return !isSpace(line.get(pos));
+    });
+    auto statement = toStatementType(line.substr(0, statementEnd));
+    switch (statement) {
+    case Statement::Local:
+        env.pushMode(std::make_shared<NormalParseMode>());
+        env.currentMode()->parse(env, Line(line, statementEnd));
+        break;
+
+    case Statement::EmptyLine:
+        return IParseMode::Result::NextLine;
+
+    default:
+        AWESOME_THROW(SyntaxException) << "Found unknown statement...";
+    }
+    return IParseMode::Result::Continue;
+}
 
 }

@@ -58,6 +58,27 @@ void Object::applyObjectDefined()
     }
 }
 
+bool Object::isExistMember(std::string const& name)const
+{
+    return this->members.count(name) >= 1;
+}
+
+Value& Object::getMember(std::string const& name)
+{
+    auto const* constThis = this;
+    return const_cast<Value&>(constThis->getMember(name));
+}
+
+Value const& Object::getMember(std::string const& name)const
+{
+    auto it = this->members.find(name);
+    if (it == this->members.end()) {
+        AWESOME_THROW(std::invalid_argument)
+            << "don't found '" << name << "'member...";
+    }
+    return it->second;
+}
+
 //-----------------------------------------------------------------------
 //
 //  struct MemberDefined
@@ -100,7 +121,7 @@ Value const* Reference::ref()const
 Value const Value::none = Value().init(Value::Type::None);
 Value const Value::emptyStr = Value::string();
 ObjectDefined const Value::arrayDefined;
-ObjectDefined const Value::objectDefined;
+ObjectDefined const Value::emptyObjectDefined;
 
 Value::Value()
     : type(Type::None)
@@ -255,7 +276,7 @@ Value& Value::init(Type type_)
     case Type::String: this->pData->data = ""s; break;
     case Type::Number: this->pData->data = 0.0; break;
     case Type::Array:  this->pData->data = array{}; break;
-    case Type::Object: this->pData->data = object(&Value::objectDefined); break;
+    case Type::Object: this->pData->data = object(&Value::emptyObjectDefined); break;
     case Type::ObjectDefined: this->pData->data = ObjectDefined{}; break;
     case Type::MemberDefined: this->pData->data = MemberDefined{}; break;
     case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;

@@ -282,7 +282,7 @@ ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& n
         if ("Array" == *nestName.begin()) {
             return &Value::arrayDefined;
         } else if ("Object" == *nestName.begin()) {
-            return &Value::objectDefined;
+            return &Value::emptyObjectDefined;
         }
     }
     auto nestNameList = toStringList(nestName);
@@ -307,7 +307,7 @@ void parseValue(Enviroment& env, Line& valueLine)
             env.currentScope().value().init(Value::Type::Array);
             auto startArrayElement = valueLine.skipSpace(p + 1);
             parseArrayElement(env, valueLine, startArrayElement);
-        } else if(&Value::objectDefined == pObjectDefined) {
+        } else if(&Value::emptyObjectDefined == pObjectDefined) {
             env.currentScope().value().init(Value::Type::Object);
         } else {
             env.currentScope().value() = Object(pObjectDefined);
@@ -348,7 +348,7 @@ Value parseValueInSingleLine(Enviroment const& env, Line& valueLine)
         ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
         if (&Value::arrayDefined == pObjectDefined) {
             return Value().init(Value::Type::Array);
-        } else if (&Value::objectDefined == pObjectDefined) {
+        } else if (&Value::emptyObjectDefined == pObjectDefined) {
             return Value().init(Value::Type::Object);
         } else {
             return Object(pObjectDefined);
@@ -527,13 +527,8 @@ Value const* searchValue(std::list<std::string> const& nestName, Enviroment cons
     // Find the starting point of the appropriate place.
     auto rootName = nestName.front();
     for (auto&& pScope : boost::adaptors::reverse(env.scopeStack)) {
-        if (pScope->nestName().back() == rootName) {
-            pResult = &pScope->value();
-            break;
-        }
-        if (pScope->value().isExsitChild(rootName)) {
-            auto& childValue = pScope->value().getChild(rootName);
-            pResult = &childValue;
+        pResult = pScope->searchVariable(rootName);
+        if (pResult) {
             break;
         }
     }

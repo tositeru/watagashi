@@ -38,6 +38,9 @@ struct Object
     Object(ObjectDefined const* pDefined);
 
     void applyObjectDefined();
+    bool isExistMember(std::string const& name)const;
+    Value& getMember(std::string const& name);
+    Value const& getMember(std::string const& name)const;
 
 };
 
@@ -85,7 +88,7 @@ struct Value
     static Value const none;
     static Value const emptyStr;
     static ObjectDefined const arrayDefined; // dummy objectDefined
-    static ObjectDefined const objectDefined;
+    static ObjectDefined const emptyObjectDefined;
     static boost::string_view toString(Type type);
     static Type toType(boost::string_view const& str);
 

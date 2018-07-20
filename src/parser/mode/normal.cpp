@@ -138,6 +138,7 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
 
 IParseMode::Result NormalParseMode::parse(Enviroment& env, Line& line)
 {
+    line.resize(line.skipSpace(0), 0);
     if (Value::Type::Object == env.currentScope().valueType()) {
         if (':' == *line.get(0)) {
             auto statementLine = line;

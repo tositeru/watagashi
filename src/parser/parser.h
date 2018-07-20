@@ -10,7 +10,7 @@ namespace parser
 
 struct ParserDesc
 {
-    Value externObj = Object(&Value::objectDefined);
+    Value externObj = Object(&Value::emptyObjectDefined);
 };
 
 Value parse(boost::filesystem::path const& filepath, ParserDesc const& desc);

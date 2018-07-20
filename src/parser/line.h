@@ -11,6 +11,7 @@ class Line
 {
 public:
     Line(char const* source_, size_t begin_, size_t end);
+    Line(Line const& other, size_t begin_);
 
     void resize(size_t beginOffset, size_t endOffset);
 

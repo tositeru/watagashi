@@ -163,7 +163,8 @@ using StatementBimap = boost::bimap<boost::string_view, Statement>;
 static StatementBimap const statementBimap = boost::assign::list_of<StatementBimap::relation>
     ("empty_line", Statement::EmptyLine)
     ("if", Statement::Branch)
-    ("unless", Statement::Unless);
+    ("unless", Statement::Unless)
+    ("local", Statement::Local);
 
 Statement toStatementType(boost::string_view const& str)
 {

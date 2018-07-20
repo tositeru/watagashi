@@ -29,6 +29,8 @@ public:
     virtual ~IScope() {}
 
     virtual void close(Enviroment& env);
+    Value* searchVariable(std::string const& name);
+    virtual Value const* searchVariable(std::string const& name)const;
 
     virtual Type type()const = 0;
     virtual std::list<std::string> const& nestName()const = 0;
@@ -116,11 +118,14 @@ class BranchScope : public IScope
     LogicOperator mLogicOp;
     bool mDoSkip;
 
+    Object mLocalVariables;
+
 public:
     BranchScope(IScope& parentScope, Value const* pSwitchTargetVariable, bool isDenial);
 
     Type type()const override;
     void close(Enviroment& env)override;
+    Value const* searchVariable(std::string const& name)const override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;
@@ -140,6 +145,10 @@ public:
     // operate running count of true statement
     void incrementRunningCount();
     bool doElseStatement()const;
+
+    // operate local variable
+    void addLocalVariable(std::string const& name, Value const& value);
+
 };
 
 class DummyScope : public IScope
@@ -148,6 +157,7 @@ public:
     Type type()const override;
 
     void close(Enviroment& env)override;
+    Value const* searchVariable(std::string const& name)const override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;
@@ -167,6 +177,7 @@ public:
 
     Type type()const override;
     void close(Enviroment& env)override;
+    Value const* searchVariable(std::string const& name)const override;
 
     std::list<std::string> const& nestName()const override;
     Value& value() override;

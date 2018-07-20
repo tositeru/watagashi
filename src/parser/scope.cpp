@@ -39,6 +39,10 @@ void IScope::close(Enviroment& env)
         auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
         defineFunctionScope.setValueToCurrentElement(this->value());
         env.popMode();
+    } else if(env.currentScope().type() == IScope::Type::Branch) {
+        auto& branchScope = dynamic_cast<BranchScope&>(env.currentScope());
+        branchScope.addLocalVariable(this->nestName().back(), this->value());
+        env.popMode();
 
     } else {
         Value* pParentValue = nullptr;
@@ -84,6 +88,23 @@ void IScope::close(Enviroment& env)
                 << MAKE_EXCEPTION;
         }
     }
+}
+
+Value* IScope::searchVariable(std::string const& name) {
+    auto const* constThis = this;
+    return const_cast<Value*>(constThis->searchVariable(name));
+}
+
+Value const* IScope::searchVariable(std::string const& name)const
+{
+    if (this->nestName().back() == name) {
+        return &this->value();
+    }
+    if (this->value().isExsitChild(name)) {
+        auto& childValue = this->value().getChild(name);
+        return &childValue;
+    }
+    return nullptr;
 }
 
 //----------------------------------------------------------------------------------
@@ -330,6 +351,7 @@ BranchScope::BranchScope(IScope& parentScope, Value const* pSwitchTargetVariable
     , mFalseCount(0)
     , mLogicOp(LogicOperator::Continue)
     , mDoSkip(false)
+    , mLocalVariables(&Value::emptyObjectDefined)
 {}
 
 IScope::Type BranchScope::type()const
@@ -340,6 +362,14 @@ IScope::Type BranchScope::type()const
 void BranchScope::close(Enviroment& env)
 {
     env.popMode();
+}
+
+Value const* BranchScope::searchVariable(std::string const& name)const
+{
+    if (!this->mLocalVariables.isExistMember(name)) {
+        return nullptr;
+    }
+    return &this->mLocalVariables.getMember(name);
 }
 
 std::list<std::string> const& BranchScope::nestName()const
@@ -473,6 +503,11 @@ bool BranchScope::doElseStatement()const
     return this->mRunningCountOfTrueStatement <= 0;
 }
 
+void BranchScope::addLocalVariable(std::string const& name, Value const& value)
+{
+    this->mLocalVariables.members.insert({name, value});
+}
+
 //----------------------------------------------------------------------------------
 //
 //  class DummyScope
@@ -486,6 +521,11 @@ IScope::Type DummyScope::type()const
 void DummyScope::close(Enviroment& env)
 {
     env.popMode();
+}
+
+Value const* DummyScope::searchVariable(std::string const& name)const
+{
+    return nullptr;
 }
 
 std::list<std::string> const& DummyScope::nestName()const
@@ -569,6 +609,11 @@ void DefineFunctionScope::close(Enviroment& env)
     if (auto pDefineFunctionParser = dynamic_cast<DefineFunctionParseMode*>(env.currentMode().get())) {
         pDefineFunctionParser->resetMode();
     }
+}
+
+Value const* DefineFunctionScope::searchVariable(std::string const& name)const
+{
+    return nullptr;
 }
 
 std::list<std::string> const& DefineFunctionScope::nestName()const
