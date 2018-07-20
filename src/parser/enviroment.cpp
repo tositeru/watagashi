@@ -87,7 +87,7 @@ int Enviroment::compareIndentLevel(int level)
     if (level == this->scopeStack.size()) {
         return 0;
     }
-    return level - this->scopeStack.size();
+    return level - static_cast<int>(this->scopeStack.size());
 }
 
 IScope& Enviroment::globalScope()

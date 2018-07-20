@@ -1,5 +1,10 @@
 #include "scope.h"
 
+#include <string>
+
+#include <boost/bimap.hpp>
+#include <boost/assign.hpp>
+
 #include "line.h"
 
 #include "parseMode.h"
@@ -14,6 +19,26 @@ namespace parser
 //  class IScope
 //
 //----------------------------------------------------------------------------------
+using ScopeTypeBimap = boost::bimap<boost::string_view, IScope::Type>;
+static ScopeTypeBimap const scopeTypeBimap = boost::assign::list_of<ScopeTypeBimap::relation>
+    ("normal", IScope::Type::Normal)
+    ("reference", IScope::Type::Reference)
+    ("boolean", IScope::Type::Boolean)
+    ("branch", IScope::Type::Branch)
+    ("dummy", IScope::Type::Dummy)
+    ("defineFunction", IScope::Type::DefineFunction)
+    ("callFunction", IScope::Type::CallFunction)
+    ("callFunctionArguments", IScope::Type::CallFunctionArguments)
+    ("callFunctionReturnValues", IScope::Type::CallFunctionReturnValues);
+
+boost::string_view IScope::toString(Type type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = scopeTypeBimap.right.find(type);
+    return scopeTypeBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
 
 void IScope::close(Enviroment& env)
 {
@@ -39,9 +64,15 @@ void IScope::close(Enviroment& env)
         auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
         defineFunctionScope.setValueToCurrentElement(this->value());
         env.popMode();
-    } else if(env.currentScope().type() == IScope::Type::Branch) {
+
+    } else if (env.currentScope().type() == IScope::Type::Branch) {
         auto& branchScope = dynamic_cast<BranchScope&>(env.currentScope());
         branchScope.addLocalVariable(this->nestName().back(), this->value());
+        env.popMode();
+
+    } else if(env.currentScope().type() == IScope::Type::CallFunctionArguments) {
+        auto& callArgumentsScope = dynamic_cast<CallFunctionArgumentsScope&>(env.currentScope());
+        callArgumentsScope.pushArgument(std::move(this->value()));
         env.popMode();
 
     } else {
@@ -107,6 +138,12 @@ Value const* IScope::searchVariable(std::string const& name)const
     return nullptr;
 }
 
+Value& IScope::value()
+{
+    auto constThis = const_cast<IScope const*>(this);
+    return const_cast<Value&>(constThis->value());
+}
+
 //----------------------------------------------------------------------------------
 //
 //  class NormalScope
@@ -134,11 +171,6 @@ IScope::Type NormalScope::type()const{
 std::list<std::string> const& NormalScope::nestName()const
 {
     return this->mNestName;
-}
-
-Value& NormalScope::value()
-{
-    return this->mValue;
 }
 
 Value const& NormalScope::value()const
@@ -182,11 +214,6 @@ void ReferenceScope::close(Enviroment& env)
 std::list<std::string> const& ReferenceScope::nestName()const
 {
     return this->mNestName;
-}
-
-Value& ReferenceScope::value()
-{
-    return this->mRefValue;
 }
 
 Value const& ReferenceScope::value()const
@@ -237,7 +264,7 @@ IScope::Type BooleanScope::type()const {
 
 void BooleanScope::close(Enviroment& env)
 {
-    this->value() = this->result();
+    IScope::value() = this->result();
     env.popMode();
     IScope::close(env);
 }
@@ -245,11 +272,6 @@ void BooleanScope::close(Enviroment& env)
 std::list<std::string> const& BooleanScope::nestName()const
 {
     return this->mNestName;
-}
-
-Value& BooleanScope::value()
-{
-    return this->mValue;
 }
 
 Value const& BooleanScope::value()const
@@ -278,7 +300,7 @@ void BooleanScope::setLogicOperator(LogicOperator op)
         if (this->mLogicOp != op) {
             AWESOME_THROW(SyntaxException)
                 << "can not specify different logical operators..."
-                << "(prev: " << toString(this->mLogicOp) << ", now:" << toString(op) << ")";
+                << "(prev: " << parser::toString(this->mLogicOp) << ", now:" << parser::toString(op) << ")";
         }
         break;
     default:
@@ -377,11 +399,6 @@ std::list<std::string> const& BranchScope::nestName()const
     return this->mParentScope.nestName();
 }
 
-Value& BranchScope::value()
-{
-    return this->mParentScope.value();
-}
-
 Value const& BranchScope::value()const
 {
     return this->mParentScope.value();
@@ -466,7 +483,7 @@ void BranchScope::setLogicOperator(LogicOperator op)
         if (this->mLogicOp != op) {
             AWESOME_THROW(SyntaxException)
                 << "can not specify different logical operators..."
-                << "(prev: " << toString(this->mLogicOp) << ", now:" << toString(op) << ")";
+                << "(prev: " << parser::toString(this->mLogicOp) << ", now:" << parser::toString(op) << ")";
         }
         break;
     default:
@@ -531,12 +548,6 @@ Value const* DummyScope::searchVariable(std::string const& name)const
 std::list<std::string> const& DummyScope::nestName()const
 {
     static std::list<std::string> const dummy = {};
-    return dummy;
-}
-
-Value& DummyScope::value()
-{
-    static Value dummy(Value::none);
     return dummy;
 }
 
@@ -621,11 +632,6 @@ std::list<std::string> const& DefineFunctionScope::nestName()const
     return this->mParentScope.nestName();
 }
 
-Value& DefineFunctionScope::value()
-{
-    return this->mParentScope.value();
-}
-
 Value const& DefineFunctionScope::value()const
 {
     return this->mParentScope.value();
@@ -658,8 +664,209 @@ void DefineFunctionScope::setValueToCurrentElement(Value const& value)
     }
     default:
         AWESOME_THROW(FatalException)
-            << "don't set value to current element at " << toString(this->mOp) << ".";
+            << "don't set value to current element at " << parser::toString(this->mOp) << ".";
     }
+}
+
+//----------------------------------------------------------------------------------
+//
+//  class CallFunctionScope
+//
+//----------------------------------------------------------------------------------
+CallFunctionScope::CallFunctionScope(IScope& parentScope, Function const& function)
+    : mParentScope(parentScope)
+    , mFunction(function)
+{
+    this->mArguments.reserve(function.arguments.size());
+}
+
+void CallFunctionScope::close(Enviroment& env)
+{
+    //TODO execute function
+
+    //TODO fix set return value from function.
+    //auto returnValueCount = std::min(this->mReturnValues.size(), function return value count);
+    auto const returnValueCount = this->mReturnValues.size();
+    for (auto returnValueIndex = 0u; returnValueIndex < returnValueCount; ++returnValueIndex) {
+        auto& nestName = this->mReturnValues[returnValueIndex];
+        bool isSuccess = false;
+        Value* pParentValue = nullptr;
+        if (2 <= this->nestName().size()) {
+            pParentValue = searchValue(this->nestName(), env, true);
+        } else {
+            pParentValue = &this->mParentScope.value();
+        }
+        // test data
+        auto testData = std::string("returnValue") + std::to_string(returnValueIndex + 1);
+        if (!pParentValue->addMember(nestName.back(), testData) ) {
+            AWESOME_THROW(FatalException)
+                << "Failed to set a return value from function. name=" << toNameString(nestName);
+        }
+    }
+
+    env.popMode();
+}
+
+Value const* CallFunctionScope::searchVariable(std::string const& name)const
+{
+    return nullptr;
+}
+
+IScope::Type CallFunctionScope::type()const
+{
+    return Type::CallFunction;
+}
+
+std::list<std::string> const& CallFunctionScope::nestName()const
+{
+    return this->mParentScope.nestName();
+}
+
+Value const& CallFunctionScope::value()const
+{
+    return this->mParentScope.value();
+}
+
+Value::Type CallFunctionScope::valueType()const
+{
+    return this->mParentScope.valueType();
+}
+
+void CallFunctionScope::setArguments(std::vector<Value>&& args)
+{
+    this->mArguments = std::move(args);
+}
+
+void CallFunctionScope::setReturnValueNames(std::vector<std::list<std::string>>&& names)
+{
+    this->mReturnValues = std::move(names);
+}
+
+Function const& CallFunctionScope::function()const
+{
+    return this->mFunction;
+}
+
+//----------------------------------------------------------------------------------
+//
+//  class CallFunctionArgumentsScope
+//
+//----------------------------------------------------------------------------------
+
+CallFunctionArgumentsScope::CallFunctionArgumentsScope(CallFunctionScope& parentScope, size_t expectedArgumentsCount)
+    : mParentScope(parentScope)
+{
+    this->mArguments.reserve(expectedArgumentsCount);
+}
+
+void CallFunctionArgumentsScope::close(Enviroment& env)
+{
+    switch (env.currentScope().type()) {
+    case IScope::Type::CallFunction:
+    {
+        auto& parentScope = dynamic_cast<CallFunctionScope&>(env.currentScope());
+        parentScope.setArguments(this->moveArguments());
+        break;
+    }
+    default:
+        AWESOME_THROW(FatalException)
+            << "Unimplement to close in the case the parent scope is '" << IScope::toString(env.currentScope().type()) << "'";
+    }
+}
+
+Value const* CallFunctionArgumentsScope::searchVariable(std::string const& name)const
+{
+    return nullptr;
+}
+
+IScope::Type CallFunctionArgumentsScope::type()const
+{
+    return Type::CallFunctionArguments;
+}
+
+std::list<std::string> const& CallFunctionArgumentsScope::nestName()const
+{
+    return this->mParentScope.nestName();
+}
+
+Value const& CallFunctionArgumentsScope::value()const
+{
+    return this->mParentScope.value();
+}
+
+Value::Type CallFunctionArgumentsScope::valueType()const
+{
+    return this->mParentScope.valueType();
+}
+
+void CallFunctionArgumentsScope::pushArgument(Value&& value)
+{
+    this->mArguments.push_back(std::move(value));
+}
+
+std::vector<Value>&& CallFunctionArgumentsScope::moveArguments()
+{
+    return std::move(this->mArguments);
+}
+
+//----------------------------------------------------------------------------------
+//
+//  class CallFunctionReturnValueScope
+//
+//----------------------------------------------------------------------------------
+
+CallFunctionReturnValueScope::CallFunctionReturnValueScope(CallFunctionScope& parentScope)
+    : mParentScope(parentScope)
+{}
+
+void CallFunctionReturnValueScope::close(Enviroment& env)
+{
+    switch (env.currentScope().type()) {
+    case IScope::Type::CallFunction:
+    {
+        auto& parentScope = dynamic_cast<CallFunctionScope&>(env.currentScope());
+        parentScope.setReturnValueNames(this->moveReturnValueNames());
+        break;
+    }
+    default:
+        AWESOME_THROW(FatalException)
+            << "Unimplement to close in the case the parent scope is '" << IScope::toString(env.currentScope().type()) << "'";
+    }
+}
+
+Value const* CallFunctionReturnValueScope::searchVariable(std::string const& name)const
+{
+    return nullptr;
+}
+
+IScope::Type CallFunctionReturnValueScope::type()const
+{
+    return Type::CallFunctionReturnValues;
+}
+
+std::list<std::string> const& CallFunctionReturnValueScope::nestName()const
+{
+    return this->mParentScope.nestName();
+}
+
+Value const& CallFunctionReturnValueScope::value()const
+{
+    return this->mParentScope.value();
+}
+
+Value::Type CallFunctionReturnValueScope::valueType()const
+{
+    return this->mParentScope.valueType();
+}
+
+void CallFunctionReturnValueScope::pushReturnValueName(std::list<std::string>&& nestName)
+{
+    this->mReturnValues.push_back(std::move(nestName));
+}
+
+std::vector<std::list<std::string>>&& CallFunctionReturnValueScope::moveReturnValueNames()
+{
+    return std::move(this->mReturnValues);
 }
 
 }

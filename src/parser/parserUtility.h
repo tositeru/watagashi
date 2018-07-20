@@ -107,6 +107,15 @@ enum class ArgumentOperator
 ArgumentOperator toArgumentOperator(boost::string_view const& str);
 boost::string_view const toString(ArgumentOperator type);
 
+enum class CallFunctionOperator
+{
+    Unknown,
+    ByUsing,
+    PassTo,
+};
+CallFunctionOperator toCallFunctionOperaotr(boost::string_view const& str);
+boost::string_view const toString(CallFunctionOperator type);
+
 struct MakeExceptionCommand {};
 
 extern MakeExceptionCommand const MAKE_EXCEPTION;

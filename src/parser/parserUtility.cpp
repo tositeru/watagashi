@@ -228,6 +228,28 @@ boost::string_view const toString(ArgumentOperator type)
         : it->get_left();
 }
 
+using CallFunctionOperatorBimap = boost::bimap<boost::string_view, CallFunctionOperator>;
+static CallFunctionOperatorBimap const callFunctionOperatorBimap = boost::assign::list_of<CallFunctionOperatorBimap::relation>
+    ("by_using", CallFunctionOperator::ByUsing)
+    ("pass_to", CallFunctionOperator::PassTo);
+
+CallFunctionOperator toCallFunctionOperaotr(boost::string_view const& str)
+{
+    auto it = callFunctionOperatorBimap.left.find(str);
+    return callFunctionOperatorBimap.left.end() == it
+        ? CallFunctionOperator::Unknown
+        : it->get_right();
+}
+
+boost::string_view const toString(CallFunctionOperator type)
+{
+    static char const* UNKNOWN = "(unknown)";
+    auto it = callFunctionOperatorBimap.right.find(type);
+    return callFunctionOperatorBimap.right.end() == it
+        ? UNKNOWN
+        : it->get_left();
+}
+
 std::list<std::string> toStringList(std::list<boost::string_view> const& list)
 {
     std::list<std::string> result;

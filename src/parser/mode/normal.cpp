@@ -13,6 +13,7 @@
 #include "boolean.h"
 #include "branch.h"
 #include "defineFunction.h"
+#include "callFunction.h"
 
 using namespace std;
 
@@ -131,7 +132,19 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
     case Statement::EmptyLine:
         return IParseMode::Result::NextLine;
     default:
-        AWESOME_THROW(SyntaxException) << "Found unknown statement...";
+    {
+        auto[nestNames, p] = parseName(line, 0);
+        bool isSuccess = false;
+        auto pFunc = searchValue(isSuccess, toStringList(nestNames), env);
+        if (!isSuccess && pFunc->type != Value::Type::Function) {
+            AWESOME_THROW(SyntaxException) << "Don't found function... name='" << toNameString(nestNames) << "'";
+        }
+
+        env.pushScope(std::make_shared<CallFunctionScope>(env.currentScope(), pFunc->get<Function>()));
+        env.pushMode(std::make_shared<CallFunctionParseMode>());
+        return env.currentMode()->parse(env, Line(line, line.skipSpace(p)));
+        break;
+    }
     }
     return IParseMode::Result::Continue;
 }

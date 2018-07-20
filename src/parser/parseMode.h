@@ -30,7 +30,9 @@ public:
     virtual ~IParseMode() {}
 
     virtual Result parse(Enviroment& env, Line& line) = 0;
+    Result parse(Enviroment& env, Line&& line);
     virtual Result preprocess(Enviroment& env, Line& line);
+    Result preprocess(Enviroment& env, Line&& line);
 };
 
 using StartPos = size_t;

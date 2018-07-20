@@ -23,7 +23,12 @@ public:
         Branch,
         Dummy,
         DefineFunction,
+        CallFunction,
+        CallFunctionArguments,
+        CallFunctionReturnValues,
     };
+
+    static boost::string_view toString(Type type);
 
 public:
     virtual ~IScope() {}
@@ -34,7 +39,7 @@ public:
 
     virtual Type type()const = 0;
     virtual std::list<std::string> const& nestName()const = 0;
-    virtual Value& value() = 0;
+    Value& value();
     virtual Value const& value()const = 0;
     virtual Value::Type valueType()const = 0;
 };
@@ -53,7 +58,6 @@ public:
     Type type()const override;
 
     std::list<std::string> const& nestName()const override;
-    Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const override;
 };
@@ -70,7 +74,6 @@ public:
     void close(Enviroment& env)override;
 
     std::list<std::string> const& nestName()const override;
-    Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const;
 
@@ -94,7 +97,6 @@ public:
     Type type()const override;
     void close(Enviroment& env)override;
     std::list<std::string> const& nestName()const override;
-    Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const override;
 
@@ -128,7 +130,6 @@ public:
     Value const* searchVariable(std::string const& name)const override;
 
     std::list<std::string> const& nestName()const override;
-    Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const;
 
@@ -160,7 +161,6 @@ public:
     Value const* searchVariable(std::string const& name)const override;
 
     std::list<std::string> const& nestName()const override;
-    Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const override;
 
@@ -180,7 +180,6 @@ public:
     Value const* searchVariable(std::string const& name)const override;
 
     std::list<std::string> const& nestName()const override;
-    Value& value() override;
     Value const& value()const override;
     Value::Type valueType()const;
 
@@ -189,5 +188,69 @@ public:
     void setValueToCurrentElement(Value const& value);
 
 };
+
+class CallFunctionScope : public IScope
+{
+    IScope& mParentScope;
+    Function const& mFunction;
+    std::vector<Value> mArguments;
+    std::vector<std::list<std::string>> mReturnValues;
+
+public:
+    CallFunctionScope(IScope& parentScope, Function const& function);
+
+    void close(Enviroment& env);
+    Value const* searchVariable(std::string const& name)const override;
+
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
+    void setArguments(std::vector<Value>&& args);
+    void setReturnValueNames(std::vector<std::list<std::string>>&& names);
+    Function const& function()const;
+};
+
+class CallFunctionArgumentsScope : public IScope
+{
+    CallFunctionScope& mParentScope;
+    std::vector<Value> mArguments;
+
+public:
+    CallFunctionArgumentsScope(CallFunctionScope& parentScope, size_t expectedArgumentsCount);
+
+    void close(Enviroment& env);
+    Value const* searchVariable(std::string const& name)const override;
+
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
+    void pushArgument(Value&& value);
+    std::vector<Value>&& moveArguments();
+};
+
+class CallFunctionReturnValueScope : public IScope
+{
+    CallFunctionScope& mParentScope;
+    std::vector<std::list<std::string>> mReturnValues;
+
+public:
+    CallFunctionReturnValueScope(CallFunctionScope& parentScope);
+
+    void close(Enviroment& env);
+    Value const* searchVariable(std::string const& name)const override;
+
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
+    void pushReturnValueName(std::list<std::string>&& nestName);
+    std::vector<std::list<std::string>>&& moveReturnValueNames();
+};
+
 
 }

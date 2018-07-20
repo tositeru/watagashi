@@ -17,6 +17,16 @@ using namespace std;
 namespace parser
 {
 
+IParseMode::Result IParseMode::parse(Enviroment& env, Line&& line)
+{
+    return this->parse(env, std::ref(line));
+}
+
+IParseMode::Result IParseMode::preprocess(Enviroment& env, Line&& line)
+{
+    return this->preprocess(env, std::ref(line));
+}
+
 IParseMode::Result IParseMode::preprocess(Enviroment& env, Line& line)
 {
     auto commentType = evalComment(env, line);
@@ -41,7 +51,7 @@ IParseMode::Result IParseMode::preprocess(Enviroment& env, Line& line)
 
             auto& branchScope = dynamic_cast<BranchScope&>(env.currentScope());
             if (branchScope.doCurrentStatements()) {
-                env.pushScope(std::make_shared<ReferenceScope>(branchScope.nestName(), branchScope.value(), true));
+                env.pushScope(std::make_shared<ReferenceScope>(branchScope.nestName(), branchScope.IScope::value(), true));
                 env.pushMode(std::make_shared<NormalParseMode>());
                 branchScope.incrementRunningCount();
 
@@ -209,11 +219,10 @@ EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Li
         auto separaterRange = searchArraySeparaterPos(line, startPos);
         auto endPos = std::get<1>(separaterRange);
         auto elementLine = Line(line.get(startPos), 0, endPos - startPos);
-        pos = endPos + 1;
-
         if (!predicate(elementLine)) {
             break;
         }
+        pos = endPos + 1;
     }
     return pos;
 }
