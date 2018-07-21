@@ -11,9 +11,9 @@ public:
     Result parse(Enviroment& env, Line& line);
 
 private:
-    Result parseDefault(Enviroment& env, Line& line);
-    Result parseArguments(Enviroment& env, Line& line);
-    Result parseReturnValues(Enviroment& env, Line& line);
+    Result parseDefault(Enviroment& env, Line line);
+    Result parseArguments(Enviroment& env, Line line);
+    Result parseReturnValues(Enviroment& env, Line line);
 };
 
 

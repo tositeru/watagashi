@@ -8,6 +8,7 @@
 #include "parserUtility.h"
 #include "scope.h"
 #include "parseMode.h"
+#include "enviroment.h"
 
 using namespace std;
 
@@ -110,7 +111,7 @@ Reference::Reference(Enviroment const* pEnv, std::list<std::string> const& nestN
 
 Value const* Reference::ref()const
 {
-    return searchValue(this->nestName, *this->pEnv);
+    return this->pEnv->searchValue(this->nestName, false);
 }
 
 //-----------------------------------------------------------------------

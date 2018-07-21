@@ -133,7 +133,7 @@ IParseMode::Result DefineFunctionParseMode::parseByCaptureMode(Enviroment& env, 
             Reference ref(&env, nestName);
             defineFunctionScope.addElememnt(ref);
         } else {
-            auto const* pValue = searchValue(nestName, const_cast<Enviroment const&>(env));
+            auto const* pValue = env.searchValue(nestName, false);
             defineFunctionScope.addElememnt(*pValue);
         }
         return true;

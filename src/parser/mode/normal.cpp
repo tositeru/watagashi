@@ -61,13 +61,13 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
                 << "found invalid character in source variable." << MAKE_EXCEPTION;
         }
         std::list<std::string> srcNestName = toStringList(srcNestNameView);
-        Value const* pValue = searchValue(srcNestName, env);
+        Value const* pValue = env.searchValue(srcNestName, false);
         env.currentScope().value() = *pValue;
 
     } else if (OperatorType::PushBack == opType) {
         // push reference scope
         std::list<std::string> targetNestName = toStringList(nestNames);
-        Value* pValue = searchValue(targetNestName, env);
+        Value* pValue = env.searchValue(targetNestName, false);
         if (Value::Type::Array != pValue->type) {
             throw MakeException<SyntaxException>() << "An attempt was made to add with a value other than an array."
                 << MAKE_EXCEPTION;
@@ -91,9 +91,9 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
 
     } else if (OperatorType::Extend == opType) {
         auto objectNameLine = Line(line.get(p), 0, line.length() - p);
-        auto[objectNestName, endPos] = parseObjectName(env, line, p);
+        auto[objectNestName, endPos] = parseObjectName(line, p);
 
-        ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
+        ObjectDefined const* pObjectDefined = env.searchObjdectDefined(objectNestName);
 
         Value objDefiend;
         objDefiend = *pObjectDefined;
@@ -123,7 +123,7 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
         auto [nestNameView, nameEnd] = parseName(line, pos, isSuccess);
         Value const* pValue = nullptr;
         if (isSuccess) {
-            pValue = searchValue(toStringList(nestNameView), env);
+            pValue = env.searchValue(toStringList(nestNameView), false);
         }
         env.pushScope(std::make_shared<BranchScope>(env.currentScope(), pValue, Statement::Unless == statement));
         env.pushMode(std::make_shared<BranchParseMode>());
@@ -134,9 +134,8 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
     default:
     {
         auto[nestNames, p] = parseName(line, 0);
-        bool isSuccess = false;
-        auto pFunc = searchValue(isSuccess, toStringList(nestNames), env);
-        if (!isSuccess && pFunc->type != Value::Type::Function) {
+        auto pFunc = env.searchValue(toStringList(nestNames), false, nullptr);
+        if (pFunc && pFunc->type != Value::Type::Function) {
             AWESOME_THROW(SyntaxException) << "Don't found function... name='" << toNameString(nestNames) << "'";
         }
 

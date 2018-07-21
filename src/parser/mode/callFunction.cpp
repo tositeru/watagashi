@@ -20,7 +20,7 @@ IParseMode::Result CallFunctionParseMode::parse(Enviroment& env, Line& line)
     return Result::Continue;
 }
 
-IParseMode::Result CallFunctionParseMode::parseDefault(Enviroment& env, Line& line)
+IParseMode::Result CallFunctionParseMode::parseDefault(Enviroment& env, Line line)
 {
     auto& scope = dynamic_cast<CallFunctionScope&>(env.currentScope());
     auto[opStart, opEnd] = line.getRangeSeparatedBySpace(0);
@@ -40,7 +40,7 @@ IParseMode::Result CallFunctionParseMode::parseDefault(Enviroment& env, Line& li
     return Result::Continue;
 }
 
-IParseMode::Result CallFunctionParseMode::parseArguments(Enviroment& env, Line& line)
+IParseMode::Result CallFunctionParseMode::parseArguments(Enviroment& env, Line line)
 {
     auto pCurrentScope = dynamic_cast<CallFunctionArgumentsScope*>(env.currentScopePointer().get());
 
@@ -61,7 +61,7 @@ IParseMode::Result CallFunctionParseMode::parseArguments(Enviroment& env, Line& 
                 }
             }
 
-            pValue = searchValue(isFoundValue, toStringList(nestName), env);
+            pValue = env.searchValue(toStringList(nestName), false, nullptr);
         }
 
         if(pValue) {
@@ -90,7 +90,7 @@ IParseMode::Result CallFunctionParseMode::parseArguments(Enviroment& env, Line& 
     return Result::Continue;
 }
 
-IParseMode::Result CallFunctionParseMode::parseReturnValues(Enviroment& env, Line& line)
+IParseMode::Result CallFunctionParseMode::parseReturnValues(Enviroment& env, Line line)
 {
     auto pCurrentScope = dynamic_cast<CallFunctionReturnValueScope*>(env.currentScopePointer().get());
     auto endPos = foreachArrayElement(line, 0, [&](auto elementLine) {

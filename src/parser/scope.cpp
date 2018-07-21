@@ -78,7 +78,7 @@ void IScope::close(Enviroment& env)
     } else {
         Value* pParentValue = nullptr;
         if (2 <= this->nestName().size()) {
-            pParentValue = searchValue(this->nestName(), env, true);
+            pParentValue = env.searchValue(this->nestName(), true);
         } else {
             pParentValue = &env.currentScope().value();
         }
@@ -540,7 +540,7 @@ void DummyScope::close(Enviroment& env)
     env.popMode();
 }
 
-Value const* DummyScope::searchVariable(std::string const& name)const
+Value const* DummyScope::searchVariable(std::string const& /*name*/)const
 {
     return nullptr;
 }
@@ -622,7 +622,7 @@ void DefineFunctionScope::close(Enviroment& env)
     }
 }
 
-Value const* DefineFunctionScope::searchVariable(std::string const& name)const
+Value const* DefineFunctionScope::searchVariable(std::string const& /*name*/)const
 {
     return nullptr;
 }
@@ -689,10 +689,9 @@ void CallFunctionScope::close(Enviroment& env)
     auto const returnValueCount = this->mReturnValues.size();
     for (auto returnValueIndex = 0u; returnValueIndex < returnValueCount; ++returnValueIndex) {
         auto& nestName = this->mReturnValues[returnValueIndex];
-        bool isSuccess = false;
         Value* pParentValue = nullptr;
         if (2 <= this->nestName().size()) {
-            pParentValue = searchValue(this->nestName(), env, true);
+            pParentValue = env.searchValue(this->nestName(), true);
         } else {
             pParentValue = &this->mParentScope.value();
         }
@@ -707,7 +706,7 @@ void CallFunctionScope::close(Enviroment& env)
     env.popMode();
 }
 
-Value const* CallFunctionScope::searchVariable(std::string const& name)const
+Value const* CallFunctionScope::searchVariable(std::string const& /*name*/)const
 {
     return nullptr;
 }
@@ -774,7 +773,7 @@ void CallFunctionArgumentsScope::close(Enviroment& env)
     }
 }
 
-Value const* CallFunctionArgumentsScope::searchVariable(std::string const& name)const
+Value const* CallFunctionArgumentsScope::searchVariable(std::string const& /*name*/)const
 {
     return nullptr;
 }
@@ -834,7 +833,7 @@ void CallFunctionReturnValueScope::close(Enviroment& env)
     }
 }
 
-Value const* CallFunctionReturnValueScope::searchVariable(std::string const& name)const
+Value const* CallFunctionReturnValueScope::searchVariable(std::string const& /*name*/)const
 {
     return nullptr;
 }

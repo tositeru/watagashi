@@ -227,7 +227,7 @@ EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Li
     return pos;
 }
 
-std::tuple<std::list<boost::string_view>, EndPos> parseObjectName(Enviroment const& env, Line& line, size_t start)
+std::tuple<std::list<boost::string_view>, EndPos> parseObjectName(Line& line, size_t start)
 {
     auto nameLine = Line(line.get(start), 0, line.length() - start);
     if ('[' != *nameLine.get(0)) {
@@ -285,33 +285,15 @@ std::list<std::string> convertToAbsolutionNestName(std::list<std::string> const&
     return absolutionNestName;
 }
 
-ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& nestName, Enviroment const& env)
-{
-    if (1 == nestName.size()) {
-        if ("Array" == *nestName.begin()) {
-            return &Value::arrayDefined;
-        } else if ("Object" == *nestName.begin()) {
-            return &Value::emptyObjectDefined;
-        }
-    }
-    auto nestNameList = toStringList(nestName);
-    Value const* pValue= searchValue(nestNameList, env);
-    if (Value::Type::ObjectDefined != pValue->type) {
-        throw MakeException<ScopeSearchingException>()
-            << "Value is not ObjectDefined." << MAKE_EXCEPTION;
-    }
-    return &pValue->get<ObjectDefined>();
-}
-
 void parseValue(Enviroment& env, Line& valueLine)
 {
     auto start = valueLine.skipSpace(0);
     valueLine.resize(start, 0);
     if ('[' == *valueLine.get(0)) {
         // parse Object
-        auto [objectNestName, p] = parseObjectName(env, valueLine, 0);
+        auto [objectNestName, p] = parseObjectName(valueLine, 0);
 
-        ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
+        ObjectDefined const* pObjectDefined = env.searchObjdectDefined(objectNestName);
         if (&Value::arrayDefined == pObjectDefined) {
             env.currentScope().value().init(Value::Type::Array);
             auto startArrayElement = valueLine.skipSpace(p + 1);
@@ -352,9 +334,9 @@ Value parseValueInSingleLine(Enviroment const& env, Line& valueLine)
     valueLine.resize(start, 0);
     if ('[' == *valueLine.get(0)) {
         // parse Object
-        auto[objectNestName, p] = parseObjectName(env, valueLine, 0);
+        auto[objectNestName, p] = parseObjectName(valueLine, 0);
 
-        ObjectDefined const* pObjectDefined = searchObjdectDefined(objectNestName, env);
+        ObjectDefined const* pObjectDefined = env.searchObjdectDefined(objectNestName);
         if (&Value::arrayDefined == pObjectDefined) {
             return Value().init(Value::Type::Array);
         } else if (&Value::emptyObjectDefined == pObjectDefined) {
@@ -522,91 +504,13 @@ OperatorType parseOperator(size_t& outEndPos, Line const& line, size_t start)
     return opType;
 }
 
-Value* searchValue(std::list<std::string> const& nestName, Enviroment& env, bool doGetParent)
-{
-    return const_cast<Value*>(searchValue(nestName, const_cast<Enviroment const&>(env), doGetParent));
-}
-
-Value const* searchValue(std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
-{
-    assert(!nestName.empty());
-
-    Value const* pResult = nullptr;
-
-    // Find the starting point of the appropriate place.
-    auto rootName = nestName.front();
-    for (auto&& pScope : boost::adaptors::reverse(env.scopeStack)) {
-        pResult = pScope->searchVariable(rootName);
-        if (pResult) {
-            break;
-        }
-    }
-    if (nullptr == pResult) {
-        if (!env.externObj.isExsitChild(rootName)) {
-            throw MakeException<ScopeSearchingException>()
-                << "Don't found '" << rootName << "' in enviroment."
-                << MAKE_EXCEPTION;
-        }
-        pResult = &env.externObj.getChild(rootName);
-    }
-
-    // Find a assignment destination at starting point.
-    if (2 <= nestName.size()) {
-        auto nestNameIt = ++nestName.begin();
-        auto endIt = nestName.end();
-        if (doGetParent) {
-            --endIt;
-        }
-        for (; endIt != nestNameIt; ++nestNameIt) {
-            if (!pResult->isExsitChild(*nestNameIt)) {
-                // error code
-                auto it = nestName.begin();
-                auto name = *it;
-                for (++it; nestNameIt != it; ++it) {
-                    name = "." + (*it);
-                }
-                if (Value::Type::Object == pResult->type) {
-                    throw MakeException<ScopeSearchingException>()
-                        << "Don't found '" << *nestNameIt << "' in '" << name << "'."
-                        << MAKE_EXCEPTION;
-                } else {
-                    throw MakeException<ScopeSearchingException>()
-                        << *nestNameIt << "' in '" << name << "' not equal Object."
-                        << MAKE_EXCEPTION;
-                }
-            }
-
-            pResult = &pResult->getChild(*nestNameIt);
-        }
-    }
-
-    return pResult;
-}
-
-Value* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment & env, bool doGetParent)
-{
-    return const_cast<Value*>(searchValue(outIsSuccess, nestName, const_cast<Enviroment const&>(env), doGetParent));
-}
-
-Value const* searchValue(bool& outIsSuccess, std::list<std::string> const& nestName, Enviroment const& env, bool doGetParent)
-{
-    try {
-        auto pValue = searchValue(nestName, env, doGetParent);
-        outIsSuccess = true;
-        return pValue;
-    } catch (...) {
-        outIsSuccess = false;
-        return nullptr;
-    }
-}
-
 RefOrEntityValue getValue(Enviroment const& env, Line& valueLine)
 {
     bool isSuccess = false;
     auto[nestNameView, leftValueNamePos] = parseName(valueLine, 0, isSuccess);
     Value const* pValue = nullptr;
     if (isSuccess) {
-        pValue = searchValue(isSuccess, toStringList(nestNameView), env);
+        pValue = env.searchValue(toStringList(nestNameView), false, nullptr);
     }
     if (!pValue) {
         return parseValueInSingleLine(env, valueLine);
@@ -614,7 +518,7 @@ RefOrEntityValue getValue(Enviroment const& env, Line& valueLine)
     return RefOrEntityValue(pValue);
 }
 
-Value::Type parseValueType(Enviroment& env, Line& line, size_t& inOutPos)
+Value::Type parseValueType(Line& line, size_t& inOutPos)
 {
     auto p = line.skipSpace(inOutPos);
     auto end = line.incrementPos(p, [](auto line, auto p) {
@@ -632,7 +536,7 @@ std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line
     auto[isDenial, dinialEndPos] = doExistDenialKeyward(line);
     //
     auto[boolVarNestName, nameEndPos] = parseName(line, dinialEndPos);
-    Value const* pValue = searchValue(toStringList(boolVarNestName), env);
+    Value const* pValue = env.searchValue(toStringList(boolVarNestName), false);
 
     if (Value::Type::Bool != pValue->type) {
         AWESOME_THROW(BooleanException) << "A value other than bool type can not be described in BooleanScope by itself.";
@@ -691,7 +595,7 @@ std::string expandVariable(std::string & inOutStr, Enviroment const& env)
         auto strLine = Line(&str[start+2], 0, end - (start+2));
         auto [nestNameView, linEnd] = parseName(strLine, 0);
         auto nestName = toStringList(nestNameView);
-        Value const* pValue = searchValue(nestName, env);
+        Value const* pValue = env.searchValue(nestName, false);
         switch (pValue->type) {
         case Value::Type::String:
             str.replace(start, end - start + 1, pValue->get<Value::string>());

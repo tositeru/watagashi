@@ -28,6 +28,12 @@ struct Enviroment
     void popScope();
     void closeTopScope();
 
+    Value* searchValue(std::list<std::string> const& nestName, bool doGetParent);
+    Value const* searchValue(std::list<std::string> const& nestName, bool doGetParent)const;
+    Value* searchValue(std::list<std::string> const& nestName, bool doGetParent, std::string* pOutErrorMessage);
+    Value const* searchValue(std::list<std::string> const& nestName, bool doGetParent, std::string* pOutErrorMessage)const;
+    ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& nestName)const;
+
     std::shared_ptr<IParseMode> currentMode();
     IScope& currentScope();
     IScope const& currentScope() const;

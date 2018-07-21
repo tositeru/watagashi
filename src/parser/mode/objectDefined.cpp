@@ -29,7 +29,7 @@ IParseMode::Result ObjectDefinedParseMode::parse(Enviroment& env, Line& line)
                 << "found unknown operater." << MAKE_EXCEPTION;
         }
 
-        auto valueType = parseValueType(env, line, p);
+        auto valueType = parseValueType(line, p);
         if (Value::Type::None == valueType
             || Value::Type::ObjectDefined == valueType) {
             throw MakeException<SyntaxException>()
