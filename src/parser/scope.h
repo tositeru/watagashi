@@ -253,12 +253,12 @@ public:
     std::vector<std::list<std::string>>&& moveReturnValueNames();
 };
 
-class ReturnScope : public IScope
+class SendScope : public IScope
 {
     std::vector<Value> mReturnValues;
 
 public:
-    ReturnScope();
+    SendScope();
 
     void close(Enviroment& env)override;
     Value const* searchVariable(std::string const& name)const override;

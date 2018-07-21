@@ -63,7 +63,7 @@ struct Function
     std::string contents;
     Location contentsLocation;
 
-    ParseResult&& execute(std::vector<Value> const& argumentEntitys);
+    ParseResult execute(std::vector<Value> const& argumentEntitys);
 };
 
 struct Value

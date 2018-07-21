@@ -152,12 +152,12 @@ testFunc define_function
     str1, ref str2
   with_contents
     localVar1 is ${A}, ${B} and ${C} are ${D}!
-    :return ${localVar1} and str1 is ${str1}, ${str2}
+    :send ${localVar1} and str1 is ${str1}, ${str2}
 
 getName define_function
   to_pass obj
   with_contents
-    :return name in obj
+    :send name in obj
 
 :testFunc by_using 100, Orange, CString, pass_to returnValue1, returnValue1_2
 

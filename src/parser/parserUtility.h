@@ -85,7 +85,7 @@ enum class Statement {
     Branch,
     Unless,
     Local,
-    Return,
+    Send,
 };
 Statement toStatementType(boost::string_view const& str);
 boost::string_view const toString(Statement type);

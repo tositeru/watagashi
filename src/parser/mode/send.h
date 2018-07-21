@@ -5,7 +5,7 @@
 namespace parser
 {
 
-class ReturnParseMode : public IParseMode
+class SendParseMode : public IParseMode
 {
 public:
     Result parse(Enviroment& env, Line& line);

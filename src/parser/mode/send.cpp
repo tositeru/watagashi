@@ -1,4 +1,4 @@
-#include "return.h"
+#include "send.h"
 
 #include "../enviroment.h"
 
@@ -7,7 +7,7 @@
 namespace parser
 {
 
-IParseMode::Result ReturnParseMode::parse(Enviroment& env, Line& line)
+IParseMode::Result SendParseMode::parse(Enviroment& env, Line& line)
 {
     env.pushMode(std::make_shared<NormalParseMode>());
     parseArrayElement(env, line, 0);

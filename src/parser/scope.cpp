@@ -13,7 +13,7 @@
 #include "parser.h"
 
 #include "mode/defineFunction.h"
-#include "mode/return.h"
+#include "mode/send.h"
 
 namespace parser
 {
@@ -79,7 +79,7 @@ void IScope::close(Enviroment& env)
         env.popMode();
 
     } else if (env.currentScope().type() == IScope::Type::Return) {
-        auto& returnScope = dynamic_cast<ReturnScope&>(env.currentScope());
+        auto& returnScope = dynamic_cast<SendScope&>(env.currentScope());
         if (this->valueType() == Value::Type::Reference) {
             auto& ref = this->value().get<Reference>();
             auto pValue = ref.ref();
@@ -90,7 +90,7 @@ void IScope::close(Enviroment& env)
         }
 
         while (true) {
-            if (dynamic_cast<ReturnParseMode*>(env.currentMode().get())) {
+            if (dynamic_cast<SendParseMode*>(env.currentMode().get())) {
                 break;
             }
             env.popMode();
@@ -923,50 +923,50 @@ std::vector<std::list<std::string>>&& CallFunctionReturnValueScope::moveReturnVa
 
 //----------------------------------------------------------------------------------
 //
-//  class ReturnScope
+//  class SendScope
 //
 //----------------------------------------------------------------------------------
-ReturnScope::ReturnScope()
+SendScope::SendScope()
 {}
 
-void ReturnScope::close(Enviroment& env)
+void SendScope::close(Enviroment& env)
 {
     env.returnValues = std::move(this->mReturnValues);
     env.popMode();
 }
 
-Value const* ReturnScope::searchVariable(std::string const& /*name*/)const
+Value const* SendScope::searchVariable(std::string const& /*name*/)const
 {
     return nullptr;
 }
 
-IScope::Type ReturnScope::type()const
+IScope::Type SendScope::type()const
 {
     return Type::Return;
 }
 
-std::list<std::string> const& ReturnScope::nestName()const
+std::list<std::string> const& SendScope::nestName()const
 {
     static std::list<std::string> const dummy = {""};
     return dummy;
 }
 
-Value const& ReturnScope::value()const
+Value const& SendScope::value()const
 {
     return Value::none;
 }
 
-Value::Type ReturnScope::valueType()const
+Value::Type SendScope::valueType()const
 {
     return Value::Type::None;
 }
 
-void ReturnScope::pushValue(Value const& value)
+void SendScope::pushValue(Value const& value)
 {
     this->mReturnValues.push_back(value);
 }
 
-void ReturnScope::pushValue(Value && value)
+void SendScope::pushValue(Value && value)
 {
     this->mReturnValues.push_back(std::move(value));
 }

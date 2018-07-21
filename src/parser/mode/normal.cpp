@@ -14,7 +14,7 @@
 #include "branch.h"
 #include "defineFunction.h"
 #include "callFunction.h"
-#include "return.h"
+#include "send.h"
 
 using namespace std;
 
@@ -132,9 +132,9 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
     }
     case Statement::EmptyLine:
         return IParseMode::Result::NextLine;
-    case Statement::Return:
-        env.pushScope(std::make_shared<ReturnScope>());
-        env.pushMode(std::make_shared<ReturnParseMode>());
+    case Statement::Send:
+        env.pushScope(std::make_shared<SendScope>());
+        env.pushMode(std::make_shared<SendParseMode>());
 
         return env.currentMode()->parse(env, Line(line, line.skipSpace(statementEnd)));
 

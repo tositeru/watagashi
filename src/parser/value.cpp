@@ -121,7 +121,7 @@ Value const* Reference::ref()const
 //  struct Function
 //
 //-----------------------------------------------------------------------
-ParseResult&& Function::execute(std::vector<Value> const& actualArguments)
+ParseResult Function::execute(std::vector<Value> const& actualArguments)
 {
     ParserDesc parseDesc;
     for (auto&& capture : this->captures) {
