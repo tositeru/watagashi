@@ -26,6 +26,7 @@ public:
         CallFunction,
         CallFunctionArguments,
         CallFunctionReturnValues,
+        Return,
     };
 
     static boost::string_view toString(Type type);
@@ -186,7 +187,7 @@ public:
     void addElememnt(Value const& element);
     void addElememnt(Value&& element);
     void setValueToCurrentElement(Value const& value);
-
+    void appendContentsLine(Enviroment const& env, std::string const& line);
 };
 
 class CallFunctionScope : public IScope
@@ -252,5 +253,23 @@ public:
     std::vector<std::list<std::string>>&& moveReturnValueNames();
 };
 
+class ReturnScope : public IScope
+{
+    std::vector<Value> mReturnValues;
+
+public:
+    ReturnScope();
+
+    void close(Enviroment& env)override;
+    Value const* searchVariable(std::string const& name)const override;
+
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
+    void pushValue(Value const& value);
+    void pushValue(Value && value);
+};
 
 }

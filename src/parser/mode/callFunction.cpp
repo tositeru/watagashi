@@ -10,6 +10,10 @@ namespace parser
 
 IParseMode::Result CallFunctionParseMode::parse(Enviroment& env, Line& line)
 {
+    if (line.length() <= 0) {
+        return Result::Continue;
+    }
+    
     switch (env.currentScope().type()) {
     case IScope::Type::CallFunction:                return parseDefault(env, line);
     case IScope::Type::CallFunctionArguments:       return parseArguments(env, line);

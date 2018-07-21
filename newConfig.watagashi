@@ -151,17 +151,16 @@ testFunc define_function
   to_capture
     str1, ref str2
   with_contents
-    localVar1 is ${A}, ${B} and ${C} are arguments!
-    :return ${localVar1} and str1 is ${str1}, str2
+    localVar1 is ${A}, ${B} and ${C} are ${D}!
+    :return ${localVar1} and str1 is ${str1}, ${str2}
 
 getName define_function
   to_pass obj
   with_contents
     :return name in obj
 
-:testFunc by_using 100, Orange, pass_to returnValue1
+:testFunc by_using 100, Orange, CString, pass_to returnValue1, returnValue1_2
 
-##
 returnValue2 is noneValue
 :testFunc
   by_using
@@ -169,6 +168,7 @@ returnValue2 is noneValue
   pass_to
     returnValue2, returnValue2_2
   
+##
 returnValue3 receive
   first from
     getName

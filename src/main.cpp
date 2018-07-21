@@ -38,7 +38,8 @@ int main(int argn, char** args)
 
         parser::ParserDesc desc;
         definedBuildInData(desc.externObj);
-        auto configData = parser::parse(boost::filesystem::path(options.configFilepath), desc);
+        auto parseResult = parser::parse(boost::filesystem::path(options.configFilepath), desc);
+        auto& configData = parseResult.globalObj;
 
         switch (taskType) {
         case ProgramOptions::TaskType::Interactive:

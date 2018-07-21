@@ -4,13 +4,16 @@
 
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
+#include <boost/range/irange.hpp>
 
 #include "line.h"
 
 #include "parseMode.h"
 #include "enviroment.h"
+#include "parser.h"
 
 #include "mode/defineFunction.h"
+#include "mode/return.h"
 
 namespace parser
 {
@@ -74,6 +77,24 @@ void IScope::close(Enviroment& env)
         auto& callArgumentsScope = dynamic_cast<CallFunctionArgumentsScope&>(env.currentScope());
         callArgumentsScope.pushArgument(std::move(this->value()));
         env.popMode();
+
+    } else if (env.currentScope().type() == IScope::Type::Return) {
+        auto& returnScope = dynamic_cast<ReturnScope&>(env.currentScope());
+        if (this->valueType() == Value::Type::Reference) {
+            auto& ref = this->value().get<Reference>();
+            auto pValue = ref.ref();
+            returnScope.pushValue(*pValue);
+
+        } else {
+            returnScope.pushValue(this->value());
+        }
+
+        while (true) {
+            if (dynamic_cast<ReturnParseMode*>(env.currentMode().get())) {
+                break;
+            }
+            env.popMode();
+        }
 
     } else {
         Value* pParentValue = nullptr;
@@ -547,7 +568,7 @@ Value const* DummyScope::searchVariable(std::string const& /*name*/)const
 
 std::list<std::string> const& DummyScope::nestName()const
 {
-    static std::list<std::string> const dummy = {};
+    static std::list<std::string> const dummy = {""};
     return dummy;
 }
 
@@ -570,6 +591,9 @@ DefineFunctionScope::DefineFunctionScope(IScope& parentScope, DefineFunctionOper
     : mParentScope(parentScope)
     , mOp(op)
 {
+    if (this->mParentScope.valueType() != Value::Type::Function) {
+        AWESOME_THROW(FatalException) << "The value type in parent scope is not Function...";
+    }
 }
 
 IScope::Type DefineFunctionScope::type()const
@@ -595,7 +619,7 @@ void DefineFunctionScope::close(Enviroment& env)
     case DefineFunctionOperator::ToCapture:
         function.captures.reserve(this->mElements.size());
         for (auto&& e : this->mElements) {
-            function.captures.emplace_back(e);
+            function.captures.emplace_back(e.get<Value::capture>());
         }
         break;
     case DefineFunctionOperator::WithContents:
@@ -668,6 +692,16 @@ void DefineFunctionScope::setValueToCurrentElement(Value const& value)
     }
 }
 
+void DefineFunctionScope::appendContentsLine(Enviroment const& env, std::string const& line)
+{
+    if (this->mElements.empty()) {
+        auto& func = this->mParentScope.value().get<Value::function>();
+        func.contentsLocation = env.location;
+        func.contentsLocation.row = env.source.row()-1;
+    }
+    this->addElememnt(Value(line));
+}
+
 //----------------------------------------------------------------------------------
 //
 //  class CallFunctionScope
@@ -683,11 +717,31 @@ CallFunctionScope::CallFunctionScope(IScope& parentScope, Function const& functi
 void CallFunctionScope::close(Enviroment& env)
 {
     //TODO execute function
+    ParserDesc parseDesc;
+    parseDesc.location = this->mFunction.contentsLocation;
+    for (auto&& capture : this->mFunction.captures) {
+        parseDesc.externObj.addMember(capture.name, capture.value);
+    }
+    // setup arguments
+    for (auto index : boost::irange(size_t(0), this->mArguments.size())) {
+        auto& formalArgument = this->mFunction.arguments[index];
+        auto& entity = this->mArguments[index];
+        parseDesc.globalObj.addMember(formalArgument.name, entity);
+    }
+    // setup arguments by default value
+    for (auto index : boost::irange(this->mArguments.size(), this->mFunction.arguments.size())) {
+        auto& formalArgument = this->mFunction.arguments[index];
+        if (formalArgument.defaultValue.type == Value::Type::None) {
+            AWESOME_THROW(SyntaxException)
+                << "Arguments of required number not was passed.";
+        }
+        parseDesc.globalObj.addMember(formalArgument.name, formalArgument.defaultValue);
+    }
+    
+    auto result = parse(this->mFunction.contents, parseDesc);
 
-    //TODO fix set return value from function.
-    //auto returnValueCount = std::min(this->mReturnValues.size(), function return value count);
-    auto const returnValueCount = this->mReturnValues.size();
-    for (auto returnValueIndex = 0u; returnValueIndex < returnValueCount; ++returnValueIndex) {
+    auto const returnValueCount = std::min(this->mReturnValues.size(), result.returnValues.size());
+    for(auto returnValueIndex : boost::irange(size_t(0), returnValueCount)) {
         auto& nestName = this->mReturnValues[returnValueIndex];
         Value* pParentValue = nullptr;
         if (2 <= this->nestName().size()) {
@@ -696,8 +750,7 @@ void CallFunctionScope::close(Enviroment& env)
             pParentValue = &this->mParentScope.value();
         }
         // test data
-        auto testData = std::string("returnValue") + std::to_string(returnValueIndex + 1);
-        if (!pParentValue->addMember(nestName.back(), testData) ) {
+        if (!pParentValue->addMember(nestName.back(), result.returnValues[returnValueIndex]) ) {
             AWESOME_THROW(FatalException)
                 << "Failed to set a return value from function. name=" << toNameString(nestName);
         }
@@ -866,6 +919,56 @@ void CallFunctionReturnValueScope::pushReturnValueName(std::list<std::string>&& 
 std::vector<std::list<std::string>>&& CallFunctionReturnValueScope::moveReturnValueNames()
 {
     return std::move(this->mReturnValues);
+}
+
+//----------------------------------------------------------------------------------
+//
+//  class ReturnScope
+//
+//----------------------------------------------------------------------------------
+ReturnScope::ReturnScope()
+{}
+
+void ReturnScope::close(Enviroment& env)
+{
+    env.returnValues = std::move(this->mReturnValues);
+    env.popMode();
+}
+
+Value const* ReturnScope::searchVariable(std::string const& /*name*/)const
+{
+    return nullptr;
+}
+
+IScope::Type ReturnScope::type()const
+{
+    return Type::Return;
+}
+
+std::list<std::string> const& ReturnScope::nestName()const
+{
+    static std::list<std::string> const dummy = {""};
+    return dummy;
+}
+
+Value const& ReturnScope::value()const
+{
+    return Value::none;
+}
+
+Value::Type ReturnScope::valueType()const
+{
+    return Value::Type::None;
+}
+
+void ReturnScope::pushValue(Value const& value)
+{
+    this->mReturnValues.push_back(value);
+}
+
+void ReturnScope::pushValue(Value && value)
+{
+    this->mReturnValues.push_back(std::move(value));
 }
 
 }

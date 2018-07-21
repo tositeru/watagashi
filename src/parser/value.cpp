@@ -3,12 +3,14 @@
 #include <iostream>
 #include <boost/bimap.hpp>
 #include <boost/assign.hpp>
+#include <boost/range/irange.hpp>
 
 #include "../exception.hpp"
 #include "parserUtility.h"
 #include "scope.h"
 #include "parseMode.h"
 #include "enviroment.h"
+#include "parser.h"
 
 using namespace std;
 
@@ -116,6 +118,50 @@ Value const* Reference::ref()const
 
 //-----------------------------------------------------------------------
 //
+//  struct Function
+//
+//-----------------------------------------------------------------------
+ParseResult&& Function::execute(std::vector<Value> const& actualArguments)
+{
+    ParserDesc parseDesc;
+    for (auto&& capture : this->captures) {
+        parseDesc.externObj.addMember(capture.name, capture.value);
+    }
+    // setup arguments
+    for (auto index : boost::irange(size_t(0), this->arguments.size())) {
+        auto& formalArg = this->arguments[index];
+        if (index < actualArguments.size()) {
+            auto& actualArg = actualArguments[index];
+            if (formalArg.type != Value::Type::None && formalArg.type != actualArg.type) {
+                AWESOME_THROW(std::invalid_argument) << "The type between formal and actual argument is different...\n"
+                    << "Argument No=" << index+1 << ": formal=" << Value::toString(formalArg.type) << ", actual=" << Value::toString(actualArg.type);
+            }
+            parseDesc.globalObj.addMember(formalArg.name, actualArg);
+        } else {
+            // check to exist default value.
+            if (formalArg.defaultValue.type == Value::Type::None) {
+                AWESOME_THROW(SyntaxException) << "Arguments not was passed...\n"
+                    << "Argument No=" << index+1;
+            }
+            parseDesc.globalObj.addMember(formalArg.name, formalArg.defaultValue);
+        }
+    }
+    // setup variable length arguments
+    if (this->arguments.size() < actualArguments.size()) {
+        Value variableLengthArgument;
+        variableLengthArgument.init(Value::Type::Array);
+        for (auto index : boost::irange(this->arguments.size(), actualArguments.size())) {
+            auto& actualArg = actualArguments[index];
+            variableLengthArgument.pushValue(actualArg);
+        }
+        parseDesc.globalObj.addMember("__vargs", variableLengthArgument);
+    }
+
+    return parse(this->contents, parseDesc);
+}
+
+//-----------------------------------------------------------------------
+//
 //  struct Value
 //
 //-----------------------------------------------------------------------
@@ -214,6 +260,11 @@ Value::Value(Argument const& right)
     , pData(std::make_unique<InnerData>(right))
 {}
 
+Value::Value(Capture const& right)
+    : type(Type::Capture)
+    , pData(std::make_unique<InnerData>(right))
+{}
+
 Value::Value(NoneValue && right)
     : type(Type::None)
     , pData(std::make_unique<InnerData>(std::move(right)))
@@ -269,6 +320,11 @@ Value::Value(argument && right)
     , pData(std::make_unique<InnerData>(std::move(right)))
 {}
 
+Value::Value(Capture && right)
+    : type(Type::Capture)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
 Value& Value::init(Type type_)
 {
     switch (type_) {
@@ -283,6 +339,7 @@ Value& Value::init(Type type_)
     case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;
     case Type::Function: this->pData->data = Function(); break;
     case Type::Argument: this->pData->data = Argument(); break;
+    case Type::Capture: this->pData->data = Capture(); break;
     }
     this->type = type_;
     return *this;
@@ -496,7 +553,7 @@ public:
     template<>
     void operator()(std::string& str)const
     {
-        if (str.empty() >= 1) {
+        if (str.size() >= 1) {
             str += "\n";
         }
         str += this->mStringView.to_string();
@@ -520,7 +577,8 @@ static const ValueTypeBimap valueTypeBimap = boost::assign::list_of<ValueTypeBim
     ("objectDefined", Value::Type::ObjectDefined)
     ("memberDefined", Value::Type::MemberDefined)
     ("reference", Value::Type::Reference)
-    ("function", Value::Type::Function);
+    ("function", Value::Type::Function)
+    ("capture", Value::Type::Capture);
 
 boost::string_view Value::toString(Type type)
 {
@@ -608,6 +666,12 @@ public:
     {
         return "[Argument](" + arg.name + ":" + Value::toString(arg.defaultValue.type).to_string() + ")";
     }
+
+    std::string operator()(Capture const& arg)const
+    {
+        return "[Capture](" + arg.name + ":" + Value::toString(arg.value.type).to_string() + ")";
+    }
+
 };
 
 std::string Value::toString()const

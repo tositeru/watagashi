@@ -164,7 +164,8 @@ static StatementBimap const statementBimap = boost::assign::list_of<StatementBim
     ("empty_line", Statement::EmptyLine)
     ("if", Statement::Branch)
     ("unless", Statement::Unless)
-    ("local", Statement::Local);
+    ("local", Statement::Local)
+    ("return", Statement::Return);
 
 Statement toStatementType(boost::string_view const& str)
 {

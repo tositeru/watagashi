@@ -19,7 +19,13 @@ using namespace std;
 namespace parser
 {
 
-Value parse(boost::filesystem::path const& filepath, ParserDesc const& desc)
+//----------------------------------------------------------------------------------
+//
+//  common functions
+//
+//----------------------------------------------------------------------------------
+
+ParseResult parse(boost::filesystem::path const& filepath, ParserDesc const& desc)
 {
     auto source = readFile(filepath);
     for (int i = static_cast<int>(source.size())-1; 0 <= i; --i) {
@@ -28,13 +34,41 @@ Value parse(boost::filesystem::path const& filepath, ParserDesc const& desc)
             break;
         }
     }
-    return parse(source, desc);
+    ParserDesc usedDesc = desc;
+    if (usedDesc.location.empty()) {
+        usedDesc.location = Location(filepath, 0);
+    }
+    return parse(source, usedDesc);
 }
 
-Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
+bool tryParseLine(Enviroment& env, Line line, std::function<bool()> predicate)
+{
+    bool isGetLine = false;
+    try {
+        isGetLine = predicate();
+
+    } catch (ParserException& e) {
+        cerr << "line=" << env.calCurrentRow() << " : " << line.string_view() << "\n"
+            << e.what() << endl;
+        isGetLine = true;
+    } catch (boost::exception& e) {
+        cerr << "line=" << env.calCurrentRow() << " : " << line.string_view() << endl;
+        ExceptionHandlerSetter::handleBoostException(e);
+        isGetLine = true;
+    } catch (...) {
+        cerr << "line=" << env.calCurrentRow() << " : " << line.string_view() << "\n"
+             << "occur unknown error..." << endl;
+        isGetLine = true;
+    }
+    return isGetLine;
+}
+
+ParseResult parse(char const* source_, std::size_t length, ParserDesc const& desc)
 {
     Enviroment env(source_, length);
     env.externObj = desc.externObj;
+    env.globalScope().value() = desc.globalObj;
+    env.location = desc.location;
 
     bool isGetLine = true;
     Line line(nullptr, 0, 0);
@@ -42,8 +76,7 @@ Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
         if(isGetLine) {
             line = env.source.getLine(true);
         }
-        isGetLine = true;
-        try {
+        isGetLine = tryParseLine(env, line, [&]() {
             auto workLine = line;
 
             // There is a possibility that The current mode may be discarded
@@ -51,49 +84,35 @@ Value parse(char const* source_, std::size_t length, ParserDesc const& desc)
             // For this reason, it holds the current mode as a local variable.
             auto pMode = env.currentMode();
             switch (pMode->preprocess(env, workLine)) {
-            case IParseMode::Result::NextLine:  isGetLine = true;  continue;
-            case IParseMode::Result::Redo:      isGetLine = false;  continue;
+            case IParseMode::Result::NextLine:  return true;
+            case IParseMode::Result::Redo:      return false;
             default: break;
             }
 
             // the code below is necessary because it may change the state of the mode stack in preprocessing.
             pMode = env.currentMode();
             switch (pMode->parse(env, workLine)) {
-            case IParseMode::Result::NextLine:  isGetLine = true;  continue;
-            case IParseMode::Result::Redo:      isGetLine = false;  continue;
+            case IParseMode::Result::NextLine:  return true;
+            case IParseMode::Result::Redo:      return false;
             default: break;
             }
 
-        } catch (ParserException& e) {
-            cerr << e.what() << "\n"
-                << "line=" << env.source.row() << " : " << line.string_view() << endl;
-            isGetLine = true;
-        } catch(boost::exception& e) {
-            if (ParserException const* p = dynamic_cast<ParserException const *>(&e)) {
-                ExceptionHandlerSetter::handleBoostException(e);
-                cerr << "line=" << env.source.row() << " : " << line.string_view() << endl;
-            } else{
-                ExceptionHandlerSetter::handleBoostException(e);
-            }
-            isGetLine = true;
-        } catch (...) {
-            cerr << "occur unknown error... \n"
-                << "line=" << env.source.row() << " : " << line.string_view() << endl;
-            isGetLine = true;
-        }
+            return true;
+        });
     }
-    try {
+    tryParseLine(env, Line(nullptr, 0, 0), [&]() {
         if (2 <= env.scopeStack.size()) {
-            while (2 <=  env.scopeStack.size()) {
+            while (2 <= env.scopeStack.size()) {
                 env.closeTopScope();
             }
         }
-    } catch (ParserException& e) {
-        cerr << env.source.row() << ": " << e.what() << "\n"
-            << line.string_view() << endl;
-    }
+        return true;
+    });
 
-    return std::move(env.currentScope().value());
+    ParseResult result;
+    result.globalObj = std::move(env.globalScope().value());
+    result.returnValues = std::move(env.returnValues);
+    return std::move(result);
 }
 
 void showValue(Value const& value)

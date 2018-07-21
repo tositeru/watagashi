@@ -130,11 +130,15 @@ IParseMode::Result DefineFunctionParseMode::parseByCaptureMode(Enviroment& env, 
         auto [nestNameView, nameEndPos] = parseName(elementLine, nameStart);
         auto nestName = toStringList(nestNameView);
         if (isRef) {
-            Reference ref(&env, nestName);
-            defineFunctionScope.addElememnt(ref);
+            Capture capture;
+            capture.name = nestName.back();
+            capture.value = Reference(&env, nestName);
+            defineFunctionScope.addElememnt(std::move(capture));
         } else {
-            auto const* pValue = env.searchValue(nestName, false);
-            defineFunctionScope.addElememnt(*pValue);
+            Capture capture;
+            capture.name = nestName.back();
+            capture.value = *(const_cast<Enviroment const&>(env).searchValue(nestName, false));
+            defineFunctionScope.addElememnt(std::move(capture));
         }
         return true;
     });
@@ -145,7 +149,7 @@ IParseMode::Result DefineFunctionParseMode::parseByContentsMode(Enviroment& env,
 {
     assert(IScope::Type::DefineFunction == env.currentScope().type());
     auto& defineFunctionScope = dynamic_cast<DefineFunctionScope&>(env.currentScope());
-    defineFunctionScope.addElememnt(Value(line.string_view().to_string()));
+    defineFunctionScope.appendContentsLine(env, line.string_view().to_string());
 
     return Result::Continue;
 }

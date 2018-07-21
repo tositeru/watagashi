@@ -73,6 +73,6 @@ std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line
 
 std::tuple<RefOrEntityValue, RefOrEntityValue> parseCompareTargetValues(Enviroment const& env, Line const& line, size_t compareOpStart, Value const* pUsedLeftValue, Value const* pUsedRightValue);
 
-std::string expandVariable(std::string & inOutStr, Enviroment const& env);
+std::string expandVariable(std::string const& str, Enviroment const& env);
 
 }

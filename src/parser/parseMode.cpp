@@ -466,8 +466,8 @@ std::tuple<std::list<boost::string_view>, EndPos> parseName(Line const& line, si
     while (!line.isEndLine(p)) {
         p = line.skipSpace(p);
 
-        auto[nameView, isSuccess] = pickupName(line, p);
-        if (!isSuccess) {
+        auto[nameView, isSuccessPickUpName] = pickupName(line, p);
+        if (!isSuccessPickUpName) {
             outIsSuccess = false;
             return { {}, 0 };
         }
@@ -579,9 +579,9 @@ MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outEndPos, Line con
     return opType;
 }
 
-std::string expandVariable(std::string & inOutStr, Enviroment const& env)
+std::string expandVariable(std::string const& str_, Enviroment const& env)
 {
-    auto str = inOutStr;
+    auto str = str_;
     size_t start = 0;
     while (true) {
         start = str.find("${", start);

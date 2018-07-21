@@ -163,6 +163,11 @@ ObjectDefined const* Enviroment::searchObjdectDefined(std::list<boost::string_vi
     return &pValue->get<ObjectDefined>();
 }
 
+size_t Enviroment::calCurrentRow()const
+{
+    return this->source.row() + this->location.row;
+}
+
 std::shared_ptr<IParseMode> Enviroment::currentMode() {
     return this->modeStack.back();
 }
