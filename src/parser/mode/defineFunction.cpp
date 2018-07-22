@@ -109,7 +109,7 @@ IParseMode::Result DefineFunctionParseMode::parseByPassMode(Enviroment& env, Lin
             }
         }
         defineFunctionScope.addElememnt(arg);
-        return true;
+        return GO_NEXT_ELEMENT;
     });
     return Result::Continue;
 }
@@ -140,7 +140,7 @@ IParseMode::Result DefineFunctionParseMode::parseByCaptureMode(Enviroment& env, 
             capture.value = *(const_cast<Enviroment const&>(env).searchValue(nestName, false));
             defineFunctionScope.addElememnt(std::move(capture));
         }
-        return true;
+        return GO_NEXT_ELEMENT;
     });
     return Result::Continue;
 }

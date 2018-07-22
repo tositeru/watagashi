@@ -69,6 +69,8 @@ target_sources(watagashi
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/callFunction.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/send.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/send.cpp"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/arrayAccessor.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/arrayAccessor.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.h"

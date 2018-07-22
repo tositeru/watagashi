@@ -19,6 +19,54 @@ namespace parser
 {
 //----------------------------------------------------------------------------------
 //
+//  common functions
+//
+//----------------------------------------------------------------------------------
+
+void addValueToParent(Enviroment& env, IScope& scope)
+{
+    Value* pParentValue = nullptr;
+    if (2 <= scope.nestName().size()) {
+        pParentValue = env.searchValue(scope.nestName(), true);
+    } else {
+        pParentValue = &env.currentScope().value();
+    }
+    switch (pParentValue->type) {
+    case Value::Type::Object:
+        if (!pParentValue->addMember(scope)) {
+            AWESOME_THROW(SyntaxException) << "Failed to add an element to the current scope object.";
+        }
+        break;
+    case Value::Type::Array:
+        if ("" == scope.nestName().back()) {
+            pParentValue->pushValue(scope.value());
+        } else {
+            if (!pParentValue->addMember(scope)) {
+                AWESOME_THROW(SyntaxException)
+                    << "Failed to add an element to the current scope array because it was a index out of range.";
+            }
+        }
+        break;
+    case Value::Type::ObjectDefined:
+        if (!pParentValue->addMember(scope)) {
+            AWESOME_THROW(SyntaxException)
+                << "Failed to add an element to the current scope object.";
+        }
+        break;
+    case Value::Type::MemberDefined:
+    {
+        auto& memberDefined = pParentValue->get<MemberDefined>();
+        memberDefined.defaultValue = scope.value();
+        break;
+    }
+    default:
+        AWESOME_THROW(SyntaxException)
+            << "The current value can not have children.";
+    }
+}
+
+//----------------------------------------------------------------------------------
+//
 //  class IScope
 //
 //----------------------------------------------------------------------------------
@@ -78,7 +126,7 @@ void IScope::close(Enviroment& env)
         callArgumentsScope.pushArgument(std::move(this->value()));
         env.popMode();
 
-    } else if (env.currentScope().type() == IScope::Type::Return) {
+    } else if (env.currentScope().type() == IScope::Type::Send) {
         auto& returnScope = dynamic_cast<SendScope&>(env.currentScope());
         if (this->valueType() == Value::Type::Reference) {
             auto& ref = this->value().get<Reference>();
@@ -97,48 +145,7 @@ void IScope::close(Enviroment& env)
         }
 
     } else {
-        Value* pParentValue = nullptr;
-        if (2 <= this->nestName().size()) {
-            pParentValue = env.searchValue(this->nestName(), true);
-        } else {
-            pParentValue = &env.currentScope().value();
-        }
-        switch (pParentValue->type) {
-        case Value::Type::Object:
-            if (!pParentValue->addMember(*this)) {
-                throw MakeException<SyntaxException>()
-                    << "Failed to add an element to the current scope object." << MAKE_EXCEPTION;
-            }
-            break;
-        case Value::Type::Array:
-            if ("" == this->nestName().back()) {
-                pParentValue->pushValue(this->value());
-            } else {
-                if (!pParentValue->addMember(*this)) {
-                    throw MakeException<SyntaxException>()
-                        << "Failed to add an element to the current scope array because it was a index out of range."
-                        << MAKE_EXCEPTION;
-                }
-            }
-            break;
-        case Value::Type::ObjectDefined:
-            if (!pParentValue->addMember(*this)) {
-                throw MakeException<SyntaxException>()
-                    << "Failed to add an element to the current scope object."
-                    << MAKE_EXCEPTION;
-            }
-            break;
-        case Value::Type::MemberDefined:
-        {
-            auto& memberDefined = pParentValue->get<MemberDefined>();
-            memberDefined.defaultValue = this->value();
-            break;
-        }
-        default:
-            throw MakeException<SyntaxException>()
-                << "The current value can not have children."
-                << MAKE_EXCEPTION;
-        }
+        addValueToParent(env, *this);
     }
 }
 
@@ -716,7 +723,6 @@ CallFunctionScope::CallFunctionScope(IScope& parentScope, Function const& functi
 
 void CallFunctionScope::close(Enviroment& env)
 {
-    //TODO execute function
     ParserDesc parseDesc;
     parseDesc.location = this->mFunction.contentsLocation;
     for (auto&& capture : this->mFunction.captures) {
@@ -749,13 +755,16 @@ void CallFunctionScope::close(Enviroment& env)
         } else {
             pParentValue = &this->mParentScope.value();
         }
-        // test data
         if (!pParentValue->addMember(nestName.back(), result.returnValues[returnValueIndex]) ) {
             AWESOME_THROW(FatalException)
                 << "Failed to set a return value from function. name=" << toNameString(nestName);
         }
     }
 
+    if (env.currentScope().type() == IScope::Type::ArrayAccessor) {
+        auto& arrayAccessorScope = dynamic_cast<ArrayAccessorScope&>(env.currentScope());
+        arrayAccessorScope.setValueToPass(result.returnValues);
+    }
     env.popMode();
 }
 
@@ -942,7 +951,7 @@ Value const* SendScope::searchVariable(std::string const& /*name*/)const
 
 IScope::Type SendScope::type()const
 {
-    return Type::Return;
+    return Type::Send;
 }
 
 std::list<std::string> const& SendScope::nestName()const
@@ -969,6 +978,118 @@ void SendScope::pushValue(Value const& value)
 void SendScope::pushValue(Value && value)
 {
     this->mReturnValues.push_back(std::move(value));
+}
+
+//----------------------------------------------------------------------------------
+//
+//  class ArrayAccessorScope
+//
+//----------------------------------------------------------------------------------
+ArrayAccessorScope::ArrayAccessorScope(std::list<std::string> const& nestName)
+    : mNestName(nestName)
+    , mIsAll(false)
+{}
+
+ArrayAccessorScope::ArrayAccessorScope(std::list<boost::string_view> const& nestName)
+    : ArrayAccessorScope(toStringList(nestName))
+{}
+
+void ArrayAccessorScope::close(Enviroment& env)
+{
+    addValueToParent(env, *this);
+    env.popMode();
+}
+
+Value const* ArrayAccessorScope::searchVariable(std::string const& /*name*/)const
+{
+    return nullptr;
+}
+
+IScope::Type ArrayAccessorScope::type()const
+{
+    return Type::ArrayAccessor;
+}
+
+std::list<std::string> const& ArrayAccessorScope::nestName()const
+{
+    return this->mNestName;
+}
+
+Value const& ArrayAccessorScope::value()const
+{
+    return this->mValueToPass;
+}
+
+Value::Type ArrayAccessorScope::valueType()const
+{
+    return this->mValueToPass.type;
+}
+
+void ArrayAccessorScope::setValueToPass(Value::array const& arr)
+{
+    if (this->mIsAll) {
+        this->mValueToPass = arr;
+        return;
+    }
+    Value::array passValues;
+    passValues.reserve(this->mIndices.size());
+    for (auto&& index : this->mIndices) {
+        if (index >= arr.size()) {
+            AWESOME_THROW(ArrayAccessException)
+                << "out of range in array... index=" << index << ", array size=" <<arr.size();
+        }
+        passValues.push_back(arr[index]);
+    }
+
+    if (passValues.size() == 1) {
+        this->mValueToPass = std::move(passValues[0]);
+    } else {
+        this->mValueToPass = std::move(passValues);
+    }
+}
+
+void ArrayAccessorScope::setValueToPass(Value::array && arr)
+{
+    if (this->mIsAll) {
+        this->mValueToPass = std::move(arr);
+        return;
+    }
+    Value::array passValues;
+    passValues.reserve(this->mIndices.size());
+    for (auto&& index : this->mIndices) {
+        if (index >= arr.size()) {
+            AWESOME_THROW(ArrayAccessException)
+                << "out of range in array... index=" << index << ", array size=" << arr.size();
+        }
+        passValues.push_back(std::move(arr[index]));
+    }
+
+    if (passValues.size() == 1) {
+        this->mValueToPass = std::move(passValues[0]);
+    } else {
+        this->mValueToPass = std::move(passValues);
+    }
+    arr.clear();
+}
+
+void ArrayAccessorScope::pushIndex(size_t index)
+{
+    if (this->mIsAll) {
+        return;
+    }
+
+    if (index == 0) {
+        this->mIndices.clear();
+        this->mIsAll = true;
+        return;
+    }
+
+    this->mIndices.push_back(index-1);
+}
+
+bool ArrayAccessorScope::doAccessed()const
+{
+    return this->mValueToPass.type != Value::Type::None;
 }
 
 }

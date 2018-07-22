@@ -61,7 +61,7 @@ IParseMode::Result CallFunctionParseMode::parseArguments(Enviroment& env, Line l
             if (nestName.size() == 1) {
                 if (nestName.front() == toString(CallFunctionOperator::PassTo)) {
                     doSeekParseReturnValue = true;
-                    return false;
+                    return size_t(0);
                 }
             }
 
@@ -76,7 +76,7 @@ IParseMode::Result CallFunctionParseMode::parseArguments(Enviroment& env, Line l
             parseValue(env, elementLine);
         }
 
-        return true;
+        return GO_NEXT_ELEMENT;
     });
 
     if (doSeekParseReturnValue) {
@@ -100,7 +100,7 @@ IParseMode::Result CallFunctionParseMode::parseReturnValues(Enviroment& env, Lin
     auto endPos = foreachArrayElement(line, 0, [&](auto elementLine) {
         auto[nestName, nameEndPos] = parseName(elementLine, 0);
         pCurrentScope->pushReturnValueName(toStringList(nestName));
-        return true;
+        return GO_NEXT_ELEMENT;
     });
     return Result::Continue;
 }

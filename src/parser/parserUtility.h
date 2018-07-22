@@ -41,7 +41,8 @@ enum class OperatorType
     Extend,
     PushBack,
     Remove,
-    DefineFunction
+    DefineFunction,
+    Receive,
 };
 OperatorType toOperatorType(boost::string_view const& str);
 boost::string_view const toString(OperatorType type);
@@ -116,6 +117,8 @@ enum class CallFunctionOperator
 };
 CallFunctionOperator toCallFunctionOperaotr(boost::string_view const& str);
 boost::string_view const toString(CallFunctionOperator type);
+
+size_t toArrayIndex(boost::string_view const& str);
 
 struct MakeExceptionCommand {};
 
@@ -212,6 +215,14 @@ public:
         : ParserException("!!boolean error!! " + message)
     {}
 
+};
+
+class ArrayAccessException : public ParserException
+{
+public:
+    ArrayAccessException(std::string const& message)
+        : ParserException("!!array access error!! " + message)
+    {}
 };
 
 class FatalException : public ParserException

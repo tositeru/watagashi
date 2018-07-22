@@ -15,6 +15,7 @@
 #include "defineFunction.h"
 #include "callFunction.h"
 #include "send.h"
+#include "arrayAccessor.h"
 
 using namespace std;
 
@@ -25,14 +26,12 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
 {
     auto[nestNames, p] = parseName(line, 0);
     if (nestNames.empty()) {
-        throw MakeException<SyntaxException>()
-            << "found invalid character." << MAKE_EXCEPTION;
+        AWESOME_THROW(SyntaxException) << "found invalid character.";
     }
 
     auto opType = parseOperator(p, line, p);
     if (OperatorType::Unknown == opType) {
-        throw MakeException<SyntaxException>()
-            << "found unknown operater." << MAKE_EXCEPTION;
+        AWESOME_THROW(SyntaxException) << "found unknown operater.";
     }
 
     // parse value
@@ -58,20 +57,24 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
         env.pushScope(std::make_shared<NormalScope>(nestNames, Value().init(Value::Type::None)));
         auto[srcNestNameView, endPos] = parseName(line, p);
         if (srcNestNameView.empty()) {
-            throw MakeException<SyntaxException>()
-                << "found invalid character in source variable." << MAKE_EXCEPTION;
+            AWESOME_THROW(SyntaxException)
+                << "found invalid character in source variable.";
         }
         std::list<std::string> srcNestName = toStringList(srcNestNameView);
         Value const* pValue = env.searchValue(srcNestName, false);
         env.currentScope().value() = *pValue;
 
+    } else if (OperatorType::Receive == opType) {
+        env.pushScope(std::make_shared<ArrayAccessorScope>(nestNames));
+        auto arrayAccessorLine = Line(line, line.skipSpace(p));
+        env.pushMode(std::make_shared<ArrayAccessorParseMode>());
+        return env.currentMode()->parse(env, arrayAccessorLine);
     } else if (OperatorType::PushBack == opType) {
         // push reference scope
         std::list<std::string> targetNestName = toStringList(nestNames);
         Value* pValue = env.searchValue(targetNestName, false);
         if (Value::Type::Array != pValue->type) {
-            throw MakeException<SyntaxException>() << "An attempt was made to add with a value other than an array."
-                << MAKE_EXCEPTION;
+            AWESOME_THROW(SyntaxException) << "An attempt was made to add with a value other than an array.";
         }
         env.pushScope(std::make_shared<ReferenceScope>(targetNestName, *pValue, false));
 
@@ -102,8 +105,7 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
         env.pushMode(std::make_shared<ObjectDefinedParseMode>());
 
     } else {
-        throw MakeException<SyntaxException>()
-            << "Unknown operator type..." << MAKE_EXCEPTION;
+        AWESOME_THROW(SyntaxException) << "Unknown operator type...";
     }
 
     return IParseMode::Result::Continue;

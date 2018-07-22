@@ -211,7 +211,8 @@ size_t parseArrayElement(Enviroment& env, Line& line, size_t start)
     return valuePos;
 }
 
-EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Line const&)> predicate)
+size_t const GO_NEXT_ELEMENT = size_t(-1);
+EndPos foreachArrayElement(Line const& line, size_t start, std::function<size_t(Line const&)> predicate)
 {
     auto pos = start;
     while (!line.isEndLine(pos)) {
@@ -219,10 +220,13 @@ EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Li
         auto separaterRange = searchArraySeparaterPos(line, startPos);
         auto endPos = std::get<1>(separaterRange);
         auto elementLine = Line(line.get(startPos), 0, endPos - startPos);
-        if (!predicate(elementLine)) {
+        auto p = predicate(elementLine);
+        if (p == GO_NEXT_ELEMENT) {
+            pos = endPos + 1;
+        } else {
+            pos = startPos + p;
             break;
         }
-        pos = endPos + 1;
     }
     return pos;
 }
@@ -439,6 +443,7 @@ struct ChildOrderAccessorParseTraits final : public INameAccessorParseTraits
 
 std::tuple<std::list<boost::string_view>, EndPos> parseName(Line const& line, size_t start, bool &outIsSuccess)
 {
+    start = line.skipSpace(start);
     auto[firstNameView, isSuccess] = pickupName(line, start);
     if (!isSuccess) {
         outIsSuccess = false;
@@ -568,6 +573,21 @@ std::tuple<RefOrEntityValue, RefOrEntityValue> parseCompareTargetValues(
         rightValue = getValue(env, rightValueLine);
     }
     return { leftValue, rightValue };
+}
+
+size_t parseArrayIndex(boost::string_view keyward)
+{
+    bool isNumber = false;
+    auto num = toDouble(keyward.to_string(), isNumber);
+    if (isNumber) {
+        return size_t(num);
+    } else {
+        auto index = toArrayIndex(keyward);
+        if (index == size_t(-1)) {
+            AWESOME_THROW(SyntaxException) << "invalid array index...";
+        }
+        return index;
+    }
 }
 
 MemberDefinedOperatorType parseMemberDefinedOperator(size_t& outEndPos, Line const& line, size_t start)

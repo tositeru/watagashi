@@ -26,7 +26,8 @@ public:
         CallFunction,
         CallFunctionArguments,
         CallFunctionReturnValues,
-        Return,
+        Send,
+        ArrayAccessor,
     };
 
     static boost::string_view toString(Type type);
@@ -270,6 +271,32 @@ public:
 
     void pushValue(Value const& value);
     void pushValue(Value && value);
+};
+
+class ArrayAccessorScope : public IScope
+{
+    std::list<std::string> mNestName;
+    std::vector<size_t> mIndices;
+    Value mValueToPass;
+    bool mIsAll;
+
+public:
+    ArrayAccessorScope(std::list<std::string> const& nestName);
+    ArrayAccessorScope(std::list<boost::string_view> const& nestName);
+
+    void close(Enviroment& env)override;
+    Value const* searchVariable(std::string const& name)const override;
+
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
+    void setValueToPass(Value::array const& arr);
+    void setValueToPass(Value::array && arr);
+
+    void pushIndex(size_t index);
+    bool doAccessed()const;
 };
 
 }

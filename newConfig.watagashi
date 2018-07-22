@@ -157,7 +157,7 @@ testFunc define_function
 getName define_function
   to_pass obj
   with_contents
-    :send name in obj
+    :send ${name in obj}
 
 :testFunc by_using 100, Orange, CString, pass_to returnValue1, returnValue1_2
 
@@ -168,12 +168,9 @@ returnValue2 is noneValue
   pass_to
     returnValue2, returnValue2_2
   
-##
 returnValue3 receive
-  first from
-    getName
-      by_using objTest
-##
+  first from getName
+    by_using objTest
 
 # define Project
 

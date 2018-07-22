@@ -66,12 +66,16 @@ Value parseValueInSingleLine(Enviroment const& env, Line& valueLine);
 std::tuple<StartPos, EndPos> searchArraySeparaterPos(Line const& line, size_t start);
 
 size_t parseArrayElement(Enviroment& env, Line& line, size_t start);
-EndPos foreachArrayElement(Line const& line, size_t start, std::function<bool(Line const&)> predicate);
 Value::Type parseValueType(Line& line, size_t& inOutPos);
-
 std::tuple<Value const*, bool> parseBool(Enviroment const& env, Line const& line);
-
 std::tuple<RefOrEntityValue, RefOrEntityValue> parseCompareTargetValues(Enviroment const& env, Line const& line, size_t compareOpStart, Value const* pUsedLeftValue, Value const* pUsedRightValue);
+
+extern size_t const GO_NEXT_ELEMENT;
+EndPos foreachArrayElement(Line const& line, size_t start, std::function<size_t(Line const&)> predicate);
+
+
+
+size_t parseArrayIndex(boost::string_view keyward);
 
 std::string expandVariable(std::string const& str, Enviroment const& env);
 

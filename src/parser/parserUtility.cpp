@@ -65,7 +65,8 @@ static OperationBimap const operationBimap = boost::assign::list_of<OperationBim
     ("extend", OperatorType::Extend)
     ("push_back", OperatorType::PushBack)
     ("remove", OperatorType::Remove)
-    ("define_function", OperatorType::DefineFunction);
+    ("define_function", OperatorType::DefineFunction)
+    ("receive", OperatorType::Receive);
 
 OperatorType toOperatorType(boost::string_view const& str)
 {
@@ -249,6 +250,29 @@ boost::string_view const toString(CallFunctionOperator type)
     return callFunctionOperatorBimap.right.end() == it
         ? UNKNOWN
         : it->get_left();
+}
+
+using ArrayAccessorBimap = boost::bimap<boost::string_view, size_t>;
+static std::unordered_map<boost::string_view, size_t> const arrayAccessorHash = {
+    { "all", 0 },
+    { "first",  1 },
+    { "second", 2 },
+    { "third",  3 },
+    { "fourth", 4 },
+    { "fifth",  5 },
+    { "sixth",  6 },
+    { "seventh", 7 },
+    { "eighth", 8 },
+    { "ninth", 9 },
+    { "tenth", 10 },
+};
+
+size_t toArrayIndex(boost::string_view const& str)
+{
+    auto it = arrayAccessorHash.find(str);
+    return arrayAccessorHash.end() == it
+        ? -1
+        : it->second;
 }
 
 std::list<std::string> toStringList(std::list<boost::string_view> const& list)
