@@ -172,6 +172,24 @@ returnValue3 receive
   first from getName
     by_using objTest
 
+###
+  Coroutine Usage
+###
+testCoroutine define_function
+  to_pass value
+  with_contents
+    :send value
+    value is ${value}2
+    :send value, receive_to value
+    :if value equal stop
+        :finish suspend function
+    :send complete function
+
+coroutine1 is [testCoroutine]
+value1_1 receive first from :coroutine1 by_using Apple
+value1_2 receive first from :coroutine1
+value1_3 receive first from :coroutine1 by_using stop
+
 # define Project
 
 libraryPrefix is lib

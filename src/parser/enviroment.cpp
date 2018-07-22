@@ -20,6 +20,10 @@ Enviroment::Enviroment(char const* source_, std::size_t length)
     );
 }
 
+Enviroment::Enviroment(std::string const& source_)
+    : Enviroment(source_.c_str(), source_.size())
+{}
+
 void Enviroment::pushMode(std::shared_ptr<IParseMode> pMode)
 {
     this->modeStack.push_back(std::move(pMode));

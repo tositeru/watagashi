@@ -70,6 +70,16 @@ ParseResult parse(char const* source_, std::size_t length, ParserDesc const& des
     env.globalScope().value() = desc.globalObj;
     env.location = desc.location;
 
+    parse(env);
+
+    ParseResult result;
+    result.globalObj = std::move(env.globalScope().value());
+    result.returnValues = std::move(env.returnValues);
+    return std::move(result);
+}
+
+void parse(Enviroment& env)
+{
     bool isGetLine = true;
     Line line(nullptr, 0, 0);
     while (!env.source.isEof()) {
@@ -108,11 +118,6 @@ ParseResult parse(char const* source_, std::size_t length, ParserDesc const& des
         }
         return true;
     });
-
-    ParseResult result;
-    result.globalObj = std::move(env.globalScope().value());
-    result.returnValues = std::move(env.returnValues);
-    return std::move(result);
 }
 
 void showValue(Value const& value)

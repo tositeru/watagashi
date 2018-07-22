@@ -162,6 +162,18 @@ ParseResult Function::execute(std::vector<Value> const& actualArguments)
 
 //-----------------------------------------------------------------------
 //
+//  struct Coroutine
+//
+//-----------------------------------------------------------------------
+Coroutine::Coroutine(Function const* pFunction)
+    : pFunction(pFunction)
+    , pEnv(std::make_shared<Enviroment>(pFunction->contents))
+{
+    this->pEnv->location = this->pFunction->contentsLocation;
+}
+
+//-----------------------------------------------------------------------
+//
 //  struct Value
 //
 //-----------------------------------------------------------------------
@@ -325,6 +337,11 @@ Value::Value(Capture && right)
     , pData(std::make_unique<InnerData>(std::move(right)))
 {}
 
+Value::Value(Coroutine && right)
+    : type(Type::Coroutine)
+    , pData(std::make_unique<InnerData>(std::move(right)))
+{}
+
 Value& Value::init(Type type_)
 {
     switch (type_) {
@@ -340,6 +357,8 @@ Value& Value::init(Type type_)
     case Type::Function: this->pData->data = Function(); break;
     case Type::Argument: this->pData->data = Argument(); break;
     case Type::Capture: this->pData->data = Capture(); break;
+    default:
+        AWESOME_THROW(std::invalid_argument) << "unimplement type... type=" << toString(type);
     }
     this->type = type_;
     return *this;
@@ -578,7 +597,8 @@ static const ValueTypeBimap valueTypeBimap = boost::assign::list_of<ValueTypeBim
     ("memberDefined", Value::Type::MemberDefined)
     ("reference", Value::Type::Reference)
     ("function", Value::Type::Function)
-    ("capture", Value::Type::Capture);
+    ("capture", Value::Type::Capture)
+    ("coroutine", Value::Type::Coroutine);
 
 boost::string_view Value::toString(Type type)
 {
@@ -670,6 +690,11 @@ public:
     std::string operator()(Capture const& arg)const
     {
         return "[Capture](" + arg.name + ":" + Value::toString(arg.value.type).to_string() + ")";
+    }
+
+    std::string operator()(Coroutine const& arg)const
+    {
+        return "[Coroutine]";
     }
 
 };

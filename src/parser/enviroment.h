@@ -23,6 +23,7 @@ struct Enviroment
     std::vector<Value> returnValues;
 
     explicit Enviroment(char const* source_, std::size_t length);
+    explicit Enviroment(std::string const& source_);
     Enviroment(Enviroment const&) = delete;
     Enviroment(Enviroment &&) = default;
     Enviroment& operator=(Enviroment const&) = delete;

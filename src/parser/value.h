@@ -66,6 +66,15 @@ struct Function
     ParseResult execute(std::vector<Value> const& argumentEntitys);
 };
 
+struct Coroutine
+{
+    Function const* pFunction;
+    std::shared_ptr<Enviroment> pEnv;
+
+    Coroutine(Function const* pFunction);
+
+};
+
 struct Value
 {
     enum class Type
@@ -81,7 +90,8 @@ struct Value
         Reference,
         Function,
         Argument,
-        Capture
+        Capture,
+        Coroutine,
     };
 
     using string = std::string;
@@ -91,6 +101,7 @@ struct Value
     using function = Function;
     using argument = Argument;
     using capture = Capture;
+    using coroutine = Coroutine;
 
     static Value const none;
     static Value const emptyStr;
@@ -135,6 +146,7 @@ struct Value
     Value(Function && right);
     Value(Argument && right);
     Value(Capture && right);
+    Value(Coroutine && right);
 
     Value& init(Type type_);
 
@@ -237,7 +249,8 @@ struct Value::InnerData
         Reference,
         function,
         argument,
-        capture> data;
+        capture,
+        coroutine> data;
 
     InnerData()
         : data(NoneValue())
@@ -251,6 +264,11 @@ struct Value::InnerData
         // TODO use std::variant after all
         : data(right.data)
     {}
+
+    InnerData(coroutine const& /*right*/)
+    {
+        AWESOME_THROW(std::invalid_argument) << "coroutine is uncopyable.";
+    }
 
     template<typename T>
     InnerData(T const& right)

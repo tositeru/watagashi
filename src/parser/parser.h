@@ -28,6 +28,8 @@ inline ParseResult parse(std::string const& source, ParserDesc const& desc) {
     return parse(source.c_str(), source.size(), desc);
 }
 
+void parse(Enviroment& env);
+
 void confirmValueInInteractive(Value const& value);
 
 }
