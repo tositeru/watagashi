@@ -73,6 +73,8 @@ target_sources(watagashi
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/arrayAccessor.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/createCoroutine.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/createCoroutine.cpp"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/passTo.h"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/mode/passTo.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.h"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/scope.cpp"
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/parser/value.h"

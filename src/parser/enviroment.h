@@ -20,6 +20,7 @@ struct Enviroment
 
     Value externObj;
     Location location;
+    size_t headArgumentIndex;
     std::vector<Value> arguments;
     std::vector<Value> returnValues;
     enum class Status {
@@ -52,6 +53,10 @@ struct Enviroment
     Value const* searchTypeObject(std::list<boost::string_view> const& nestName)const;
 
     size_t calCurrentRow()const;
+
+    void setArguments(std::vector<Value> const& arguments);
+    Value&& moveCurrentHeadArgument();
+    bool isEmptyArguments()const;
 
     std::shared_ptr<IParseMode> currentMode();
     IScope& currentScope();

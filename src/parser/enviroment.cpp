@@ -12,6 +12,7 @@ Enviroment::Enviroment(char const* source_, std::size_t length)
     : source(source_, length)
     , indent()
     , status(Status::StandBy)
+    , headArgumentIndex(0)
 {
     this->modeStack.push_back(std::make_shared<NormalParseMode>());
 
@@ -175,6 +176,24 @@ Value const* Enviroment::searchTypeObject(std::list<boost::string_view> const& n
 size_t Enviroment::calCurrentRow()const
 {
     return this->source.row() + this->location.row;
+}
+
+void Enviroment::setArguments(std::vector<Value> const& arguments)
+{
+    this->arguments = std::move(arguments);
+    this->headArgumentIndex = 0;
+}
+
+Value&& Enviroment::moveCurrentHeadArgument()
+{
+    auto index = this->headArgumentIndex;
+    ++this->headArgumentIndex;
+    return std::move(this->arguments[index]);
+}
+
+bool Enviroment::isEmptyArguments()const
+{
+    return this->headArgumentIndex >= this->arguments.size();
 }
 
 std::shared_ptr<IParseMode> Enviroment::currentMode() {

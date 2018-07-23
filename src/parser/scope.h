@@ -27,6 +27,7 @@ public:
         CallFunctionArguments,
         CallFunctionReturnValues,
         Send,
+        PassTo,
         ArrayAccessor,
     };
 
@@ -271,6 +272,24 @@ public:
 
     void pushValue(Value const& value);
     void pushValue(Value && value);
+};
+
+class PassToScope : public IScope
+{
+    IScope& mParentScope;
+public:
+    PassToScope(IScope& parentScope);
+
+    void close(Enviroment& env)override;
+    Value const* searchVariable(std::string const& name)const override;
+
+    Type type()const override;
+    std::list<std::string> const& nestName()const override;
+    Value const& value()const override;
+    Value::Type valueType()const override;
+
+    void passValue(Enviroment& env, Value const& value);
+    void passValue(Enviroment& env, Value && value);
 };
 
 class ArrayAccessorScope : public IScope

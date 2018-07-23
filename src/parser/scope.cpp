@@ -1002,6 +1002,45 @@ void SendScope::pushValue(Value && value)
 
 //----------------------------------------------------------------------------------
 //
+//  class PassToScope
+//
+//----------------------------------------------------------------------------------
+PassToScope::PassToScope(IScope& parentScope)
+    : mParentScope(parentScope)
+{}
+
+void PassToScope::close(Enviroment& env)
+{
+    env.popMode();
+}
+
+Value const* PassToScope::searchVariable(std::string const& name)const
+{
+    return this->mParentScope.searchVariable(name);
+}
+
+IScope::Type PassToScope::type()const
+{
+    return IScope::Type::PassTo;
+}
+
+std::list<std::string> const& PassToScope::nestName()const
+{
+    return this->mParentScope.nestName();
+}
+
+Value const& PassToScope::value()const
+{
+    return this->mParentScope.value();
+}
+
+Value::Type PassToScope::valueType()const
+{
+    return this->mParentScope.valueType();
+}
+
+//----------------------------------------------------------------------------------
+//
 //  class ArrayAccessorScope
 //
 //----------------------------------------------------------------------------------

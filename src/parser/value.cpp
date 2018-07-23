@@ -207,7 +207,7 @@ ParseResult Coroutine::execute(std::vector<Value> const& argumentEntitys)
     default:
         AWESOME_THROW(FatalException) << "This coroutine is completion...";
     }
-    this->pEnv->arguments = argumentEntitys;
+    this->pEnv->setArguments(argumentEntitys);
 
     parse(*this->pEnv);
 

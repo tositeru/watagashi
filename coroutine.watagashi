@@ -7,11 +7,11 @@ testCoroutine define_function
     :send First ${value}
     value is \${value}2
     :send Second ${value}
-    :pass_to value
-    :if value
+    :pass_to var2
+    :if var2
       equal stop
-        :finish suspend function. ${value}
-    :send complete function ${value}
+        :finish suspend function. ${var2}
+    :send complete function ${var2}
 
 coroutine1 is [testCoroutine]
   by_using Apple

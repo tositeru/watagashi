@@ -16,6 +16,7 @@
 #include "callFunction.h"
 #include "send.h"
 #include "arrayAccessor.h"
+#include "passTo.h"
 
 using namespace std;
 
@@ -144,8 +145,11 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
 
         return env.currentMode()->parse(env, Line(line, line.skipSpace(statementEnd)));
     case Statement::PassTo:
+        env.pushScope(std::make_shared<PassToScope>(env.currentScope()));
+        env.pushMode(std::make_shared<PassToParseMode>());
 
-        break;
+        return env.currentMode()->parse(env, Line(line, line.skipSpace(statementEnd)));
+
     case Statement::Finish:
         env.pushScope(std::make_shared<SendScope>(true));
         env.pushMode(std::make_shared<SendParseMode>());
