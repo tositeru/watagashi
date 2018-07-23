@@ -83,17 +83,19 @@ bool isContinueLogicOperatorChar(char const* c);
 enum class Statement {
     Unknown,
     EmptyLine,
-    Branch,
+    If,
     Unless,
     Local,
     Send,
+    PassTo,
+    Finish,
 };
 Statement toStatementType(boost::string_view const& str);
 boost::string_view const toString(Statement type);
 
 enum class DefineFunctionOperator {
     Unknown,
-    ToPass,
+    ToReceive,
     ToCapture,
     WithContents,
 };

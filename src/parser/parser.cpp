@@ -82,10 +82,9 @@ void parse(Enviroment& env)
 {
     bool isGetLine = true;
     Line line(nullptr, 0, 0);
-    while (!env.source.isEof()) {
-        if(isGetLine) {
-            line = env.source.getLine(true);
-        }
+    env.status = Enviroment::Status::Run;
+    while (!env.source.isEof() && env.status == Enviroment::Status::Run) {
+        line = env.source.getLine(true);
         isGetLine = tryParseLine(env, line, [&]() {
             auto workLine = line;
 
@@ -109,15 +108,25 @@ void parse(Enviroment& env)
 
             return true;
         });
-    }
-    tryParseLine(env, Line(nullptr, 0, 0), [&]() {
-        if (2 <= env.scopeStack.size()) {
-            while (2 <= env.scopeStack.size()) {
-                env.closeTopScope();
-            }
+        if (!isGetLine) {
+            env.source.backPrevLine();
         }
-        return true;
-    });
+    }
+
+    if (env.source.isEof()) {
+        env.status = Enviroment::Status::Completion;
+    }
+
+    if (env.status == Enviroment::Status::Completion) {
+        tryParseLine(env, Line(nullptr, 0, 0), [&]() {
+            if (2 <= env.scopeStack.size()) {
+                while (2 <= env.scopeStack.size()) {
+                    env.closeTopScope();
+                }
+            }
+            return true;
+        });
+    }
 }
 
 void showValue(Value const& value)
@@ -127,6 +136,7 @@ void showValue(Value const& value)
     case Value::Type::String:   cout << "String: '" << value.get<Value::string>() << "'" << endl; break;
     case Value::Type::Number:   cout << "Number: " << value.get<Value::number>() << endl; break;
     case Value::Type::Function: cout << "Function:" << value.toString() << endl; break;
+    case Value::Type::Coroutine: cout << "Coroutine:" << value.toString() << endl; break;
     case Value::Type::Array:
     {
         auto& arr = value.get<Value::array>();

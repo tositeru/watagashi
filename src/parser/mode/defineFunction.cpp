@@ -13,6 +13,41 @@ DefineFunctionParseMode::DefineFunctionParseMode()
     : mCurrentMode(Mode::Default)
 {}
 
+IParseMode::Result DefineFunctionParseMode::preprocess(Enviroment& env, Line& line)
+{
+    switch (this->mCurrentMode) {
+    case Mode::WithContents:
+    {
+        auto commentType = evalComment(env, line);
+        if (CommentType::MultiLine == commentType) {
+            return Result::NextLine;
+        }
+
+        int level = evalIndent(env, line);
+        if (line.length() <= 0) {
+            return Result::NextLine;
+        }
+        int resultCompared = env.compareIndentLevel(level);
+        if (0 < resultCompared) {
+            auto backOffset = env.indent.unitOfIndentLength() * resultCompared;
+            line = Line(line.get(0) - backOffset, 0, line.length() + backOffset);
+
+        } else if (resultCompared < 0) {
+            while (0 != env.compareIndentLevel(level)) {
+                // close top scope.
+                env.closeTopScope();
+            }
+            if (env.currentMode().get() != this) {
+                return Result::Redo;
+            }
+        }
+        return Result::Continue;
+    }
+    default:
+        return IParseMode::preprocess(env, line);
+    }
+}
+
 IParseMode::Result DefineFunctionParseMode::parse(Enviroment& env, Line& line)
 {
     if (line.length() <= 0) {
@@ -21,7 +56,7 @@ IParseMode::Result DefineFunctionParseMode::parse(Enviroment& env, Line& line)
 
     switch (this->mCurrentMode) {
     case Mode::Default:         return parseByDefaultMode(env, line);
-    case Mode::ToPass:          return parseByPassMode(env, line);
+    case Mode::ToReceive:       return parseByPassMode(env, line);
     case Mode::ToCapture:       return parseByCaptureMode(env, line);
     case Mode::WithContents:    return parseByContentsMode(env, line);
     default:
@@ -37,7 +72,7 @@ IParseMode::Result DefineFunctionParseMode::parseByDefaultMode(Enviroment& env, 
     auto keyward = line.substr(startKeyward, endKeyward);
     auto op = toDefineFunctionOperatorType(keyward);
     switch (op) {
-    case DefineFunctionOperator::ToPass:    this->mCurrentMode = Mode::ToPass; break;
+    case DefineFunctionOperator::ToReceive:    this->mCurrentMode = Mode::ToReceive; break;
     case DefineFunctionOperator::ToCapture: this->mCurrentMode = Mode::ToCapture; break;
     case DefineFunctionOperator::WithContents: this->mCurrentMode = Mode::WithContents; break;
     default:

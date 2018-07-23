@@ -194,12 +194,12 @@ public:
 class CallFunctionScope : public IScope
 {
     IScope& mParentScope;
-    Function const& mFunction;
+    Value& mFunction;
     std::vector<Value> mArguments;
     std::vector<std::list<std::string>> mReturnValues;
 
 public:
-    CallFunctionScope(IScope& parentScope, Function const& function);
+    CallFunctionScope(IScope& parentScope, Value& function);
 
     void close(Enviroment& env);
     Value const* searchVariable(std::string const& name)const override;
@@ -216,11 +216,11 @@ public:
 
 class CallFunctionArgumentsScope : public IScope
 {
-    CallFunctionScope& mParentScope;
+    IScope& mParentScope;
     std::vector<Value> mArguments;
 
 public:
-    CallFunctionArgumentsScope(CallFunctionScope& parentScope, size_t expectedArgumentsCount);
+    CallFunctionArgumentsScope(IScope& parentScope, size_t expectedArgumentsCount);
 
     void close(Enviroment& env);
     Value const* searchVariable(std::string const& name)const override;
@@ -236,11 +236,11 @@ public:
 
 class CallFunctionReturnValueScope : public IScope
 {
-    CallFunctionScope& mParentScope;
+    IScope& mParentScope;
     std::vector<std::list<std::string>> mReturnValues;
 
 public:
-    CallFunctionReturnValueScope(CallFunctionScope& parentScope);
+    CallFunctionReturnValueScope(IScope& parentScope);
 
     void close(Enviroment& env);
     Value const* searchVariable(std::string const& name)const override;
@@ -257,9 +257,9 @@ public:
 class SendScope : public IScope
 {
     std::vector<Value> mReturnValues;
-
+    bool mIsFinished;
 public:
-    SendScope();
+    SendScope(bool isFinished);
 
     void close(Enviroment& env)override;
     Value const* searchVariable(std::string const& name)const override;

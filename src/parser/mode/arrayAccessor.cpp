@@ -43,12 +43,15 @@ IParseMode::Result ArrayAccessorParseMode::parse(Enviroment& env, Line& line)
         auto pValue = env.searchValue(toStringList(nestName), false);
         switch (pValue->type) {
         case Value::Type::Function:
-            env.pushScope(std::make_shared<CallFunctionScope>(env.currentScope(), pValue->get<Value::function>()));
+        case Value::Type::Coroutine:
+            env.pushScope(std::make_shared<CallFunctionScope>(env.currentScope(), *pValue));
             env.pushMode(std::make_shared<CallFunctionParseMode>());
             return env.currentMode()->parse(env, Line(line, nameEnd));
+
         case Value::Type::Array:
             arrayAccessorScope.setValueToPass(pValue->get<Value::array>());
             break;
+
         default:
             AWESOME_THROW(SyntaxException) << "An attempt was made to access a value other than Array or Function...";
         }

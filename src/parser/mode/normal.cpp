@@ -97,10 +97,14 @@ IParseMode::Result parseMember(Enviroment& env, Line& line)
         auto objectNameLine = Line(line.get(p), 0, line.length() - p);
         auto[objectNestName, endPos] = parseObjectName(line, p);
 
-        ObjectDefined const* pObjectDefined = env.searchObjdectDefined(objectNestName);
+        Value const* pTypeDefined = env.searchTypeObject(objectNestName);
+        if (pTypeDefined->type != Value::Type::ObjectDefined) {
+            AWESOME_THROW(SyntaxException)
+                << "'" << toNameString(objectNestName) << "' must be ObjectDefined... type=" << Value::toString(pTypeDefined->type);
+        }
 
         Value objDefiend;
-        objDefiend = *pObjectDefined;
+        objDefiend = pTypeDefined->get<ObjectDefined>();
         env.pushScope(std::make_shared<NormalScope>(nestNames, std::move(objDefiend)));
         env.pushMode(std::make_shared<ObjectDefinedParseMode>());
 
@@ -118,7 +122,7 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
     });
     auto statement = toStatementType(line.substr(0, statementEnd));
     switch (statement) {
-    case Statement::Branch: [[fallthrough]];
+    case Statement::If: [[fallthrough]];
     case Statement::Unless:
     {
         auto pos = line.skipSpace(statementEnd);
@@ -135,7 +139,15 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
     case Statement::EmptyLine:
         return IParseMode::Result::NextLine;
     case Statement::Send:
-        env.pushScope(std::make_shared<SendScope>());
+        env.pushScope(std::make_shared<SendScope>(false));
+        env.pushMode(std::make_shared<SendParseMode>());
+
+        return env.currentMode()->parse(env, Line(line, line.skipSpace(statementEnd)));
+    case Statement::PassTo:
+
+        break;
+    case Statement::Finish:
+        env.pushScope(std::make_shared<SendScope>(true));
         env.pushMode(std::make_shared<SendParseMode>());
 
         return env.currentMode()->parse(env, Line(line, line.skipSpace(statementEnd)));
@@ -148,7 +160,7 @@ IParseMode::Result parseStatement(Enviroment& env, Line& line)
             AWESOME_THROW(SyntaxException) << "Don't found function... name='" << toNameString(nestNames) << "'";
         }
 
-        env.pushScope(std::make_shared<CallFunctionScope>(env.currentScope(), pFunc->get<Function>()));
+        env.pushScope(std::make_shared<CallFunctionScope>(env.currentScope(), *pFunc));
         env.pushMode(std::make_shared<CallFunctionParseMode>());
         return env.currentMode()->parse(env, Line(line, line.skipSpace(p)));
         break;

@@ -63,7 +63,7 @@ struct Function
     std::string contents;
     Location contentsLocation;
 
-    ParseResult execute(std::vector<Value> const& argumentEntitys);
+    ParseResult execute(std::vector<Value> const& argumentEntitys)const;
 };
 
 struct Coroutine
@@ -72,7 +72,9 @@ struct Coroutine
     std::shared_ptr<Enviroment> pEnv;
 
     Coroutine(Function const* pFunction);
+    void setFunctionArguments(std::vector<Value> && arguments);
 
+    ParseResult execute(std::vector<Value> const& argumentEntitys);
 };
 
 struct Value
@@ -105,8 +107,8 @@ struct Value
 
     static Value const none;
     static Value const emptyStr;
-    static ObjectDefined const arrayDefined; // dummy objectDefined
-    static ObjectDefined const emptyObjectDefined;
+    static Value const arrayDefined; // dummy objectDefined
+    static Value const emptyObjectDefined;
     static boost::string_view toString(Type type);
     static Type toType(boost::string_view const& str);
 

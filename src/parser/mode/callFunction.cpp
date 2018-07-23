@@ -28,7 +28,7 @@ IParseMode::Result CallFunctionParseMode::parseDefault(Enviroment& env, Line lin
 {
     auto& scope = dynamic_cast<CallFunctionScope&>(env.currentScope());
     auto[opStart, opEnd] = line.getRangeSeparatedBySpace(0);
-    auto callOperator = toCallFunctionOperaotr(line.substr(opStart, opEnd));
+    auto callOperator = toCallFunctionOperaotr(line.substr(opStart, opEnd - opStart));
     switch (callOperator) {
     case CallFunctionOperator::ByUsing:
         env.pushScope(std::make_shared<CallFunctionArgumentsScope>(scope, scope.function().arguments.size()));

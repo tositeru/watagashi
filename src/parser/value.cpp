@@ -121,7 +121,7 @@ Value const* Reference::ref()const
 //  struct Function
 //
 //-----------------------------------------------------------------------
-ParseResult Function::execute(std::vector<Value> const& actualArguments)
+ParseResult Function::execute(std::vector<Value> const& actualArguments)const
 {
     ParserDesc parseDesc;
     for (auto&& capture : this->captures) {
@@ -169,7 +169,54 @@ Coroutine::Coroutine(Function const* pFunction)
     : pFunction(pFunction)
     , pEnv(std::make_shared<Enviroment>(pFunction->contents))
 {
-    this->pEnv->location = this->pFunction->contentsLocation;
+}
+
+void Coroutine::setFunctionArguments(std::vector<Value> && arguments)
+{
+    auto& function = *this->pFunction;
+    // setup arguments
+    for (auto index : boost::irange(size_t(0), arguments.size())) {
+        auto& formalArgument = this->pFunction->arguments[index];
+        auto& entity = arguments[index];
+        this->pEnv->globalScope().value().addMember(formalArgument.name, entity);
+    }
+    // setup arguments by default value
+    for (auto index : boost::irange(arguments.size(), this->pFunction->arguments.size())) {
+        auto& formalArgument = this->pFunction->arguments[index];
+        if (formalArgument.defaultValue.type == Value::Type::None) {
+            AWESOME_THROW(SyntaxException)
+                << "Arguments of required number not was passed.";
+        }
+        this->pEnv->globalScope().value().addMember(formalArgument.name, formalArgument.defaultValue);
+    }
+}
+
+ParseResult Coroutine::execute(std::vector<Value> const& argumentEntitys)
+{
+    switch (this->pEnv->status) {
+    case Enviroment::Status::StandBy:
+    {
+        for (auto&& capture : this->pFunction->captures) {
+            this->pEnv->externObj.addMember(capture.name, capture.value);
+        }
+        this->pEnv->location = this->pFunction->contentsLocation;
+        break;
+    }
+    case Enviroment::Status::Suspension:
+        break;
+    default:
+        AWESOME_THROW(FatalException) << "This coroutine is completion...";
+    }
+    this->pEnv->arguments = argumentEntitys;
+
+    parse(*this->pEnv);
+
+    ParseResult result;
+    result.returnValues = std::move(this->pEnv->returnValues);
+    if (this->pEnv->status == Enviroment::Status::Completion) {
+        result.globalObj = std::move(this->pEnv->globalScope().value());
+    }
+    return result;
 }
 
 //-----------------------------------------------------------------------
@@ -179,8 +226,8 @@ Coroutine::Coroutine(Function const* pFunction)
 //-----------------------------------------------------------------------
 Value const Value::none = Value().init(Value::Type::None);
 Value const Value::emptyStr = Value::string();
-ObjectDefined const Value::arrayDefined;
-ObjectDefined const Value::emptyObjectDefined;
+Value const Value::arrayDefined;
+Value const Value::emptyObjectDefined(ObjectDefined("Object"));
 
 Value::Value()
     : type(Type::None)
@@ -350,7 +397,7 @@ Value& Value::init(Type type_)
     case Type::String: this->pData->data = ""s; break;
     case Type::Number: this->pData->data = 0.0; break;
     case Type::Array:  this->pData->data = array{}; break;
-    case Type::Object: this->pData->data = object(&Value::emptyObjectDefined); break;
+    case Type::Object: this->pData->data = object(&Value::emptyObjectDefined.get<ObjectDefined>()); break;
     case Type::ObjectDefined: this->pData->data = ObjectDefined{}; break;
     case Type::MemberDefined: this->pData->data = MemberDefined{}; break;
     case Type::Reference: this->pData->data = Reference(nullptr, {""}); break;

@@ -59,4 +59,19 @@ void Source::goNextLine()
     ++this->mRow;
 }
 
+void Source::backPrevLine()
+{
+    auto i = std::max(size_t(1), this->mPos) - 1;
+    if ('\n' == this->mSource[i] &&i > 0) {
+        --i;
+    }
+    for (; 0 < i; --i) {
+        if ('\n' == this->mSource[i]) {
+            this->mPos = i + 1;
+            --this->mRow;
+            break;
+        }
+    }
+}
+
 }

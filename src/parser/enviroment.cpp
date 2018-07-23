@@ -11,6 +11,7 @@ namespace parser
 Enviroment::Enviroment(char const* source_, std::size_t length)
     : source(source_, length)
     , indent()
+    , status(Status::StandBy)
 {
     this->modeStack.push_back(std::make_shared<NormalParseMode>());
 
@@ -149,7 +150,7 @@ Value const* Enviroment::searchValue(std::list<std::string> const& nestName, boo
 }
 
 
-ObjectDefined const* Enviroment::searchObjdectDefined(std::list<boost::string_view> const& nestName)const
+Value const* Enviroment::searchTypeObject(std::list<boost::string_view> const& nestName)const
 {
     if (1 == nestName.size()) {
         if ("Array" == *nestName.begin()) {
@@ -160,11 +161,15 @@ ObjectDefined const* Enviroment::searchObjdectDefined(std::list<boost::string_vi
     }
     auto nestNameList = toStringList(nestName);
     Value const* pValue = this->searchValue(nestNameList, false);
-    if (Value::Type::ObjectDefined != pValue->type) {
-        throw MakeException<ScopeSearchingException>()
-            << "Value is not ObjectDefined." << MAKE_EXCEPTION;
+    switch (pValue->type) {
+    case Value::Type::ObjectDefined:
+    case Value::Type::Function:
+        return pValue;
+    default:
+        AWESOME_THROW(ScopeSearchingException)
+            << "Value is not ObjectDefined.";
     }
-    return &pValue->get<ObjectDefined>();
+    return nullptr;
 }
 
 size_t Enviroment::calCurrentRow()const

@@ -10,7 +10,8 @@ class DefineFunctionParseMode final : public IParseMode
 public:
     DefineFunctionParseMode();
 
-    Result parse(Enviroment& env, Line& line);
+    Result parse(Enviroment& env, Line& line)override;
+    Result preprocess(Enviroment& env, Line& line)override;
 
     void resetMode();
 
@@ -24,7 +25,7 @@ private:
     enum class Mode
     {
         Default,
-        ToPass,
+        ToReceive,
         ToCapture,
         WithContents,
     };

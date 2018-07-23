@@ -56,6 +56,11 @@ int Indent::calLevel(boost::string_view const& indent)const
     return level;
 }
 
+size_t Indent::unitOfIndentLength()const
+{
+    return this->mUnitOfIndent.size();
+}
+
 int Indent::currentLevel()const {
     return this->mCurrentLevel;
 }

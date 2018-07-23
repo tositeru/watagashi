@@ -163,10 +163,12 @@ bool isContinueLogicOperatorChar(char const* c)
 using StatementBimap = boost::bimap<boost::string_view, Statement>;
 static StatementBimap const statementBimap = boost::assign::list_of<StatementBimap::relation>
     ("empty_line", Statement::EmptyLine)
-    ("if", Statement::Branch)
+    ("if", Statement::If)
     ("unless", Statement::Unless)
     ("local", Statement::Local)
-    ("send", Statement::Send);
+    ("send", Statement::Send)
+    ("pass_to", Statement::PassTo)
+    ("finish", Statement::Finish);
 
 Statement toStatementType(boost::string_view const& str)
 {
@@ -187,7 +189,7 @@ boost::string_view const toString(Statement type)
 
 using DefineFunctionOperatorBimap = boost::bimap<boost::string_view, DefineFunctionOperator>;
 static DefineFunctionOperatorBimap const defineFunctionOperatorBimap = boost::assign::list_of<DefineFunctionOperatorBimap::relation>
-    ("to_pass", DefineFunctionOperator::ToPass)
+    ("to_receive", DefineFunctionOperator::ToReceive)
     ("to_capture", DefineFunctionOperator::ToCapture)
     ("with_contents", DefineFunctionOperator::WithContents);
 
@@ -321,7 +323,7 @@ std::string toNameString(std::list<boost::string_view> const& nestName)
 
 bool isReference(std::string const& str)
 {
-    if ('$' != str[0] && '{' == str[1]) {
+    if ('$' != str[0] && '{' != str[1]) {
         return false;
     }
     auto end = str.find('}', 0);

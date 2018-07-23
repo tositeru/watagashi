@@ -22,6 +22,8 @@ public:
     void setLevel(int level);
     int calLevel(boost::string_view const& indent)const;
 
+    size_t unitOfIndentLength()const;
+
 public:
     int currentLevel()const;
 

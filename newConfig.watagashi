@@ -144,7 +144,7 @@ objTest is [NewObject]
   Function Usage
 ###
 testFunc define_function
-  to_pass A, B is string
+  to_receive A, B is string
     C is string by_default Default Text, D by_default
       MultiLine
       Comment
@@ -155,7 +155,7 @@ testFunc define_function
     :send ${localVar1} and str1 is ${str1}, ${str2}
 
 getName define_function
-  to_pass obj
+  to_receive obj
   with_contents
     :send ${name in obj}
 
@@ -176,19 +176,22 @@ returnValue3 receive
   Coroutine Usage
 ###
 testCoroutine define_function
-  to_pass value
+  to_receive value
   with_contents
     :send value
     value is ${value}2
-    :send value, receive_to value
-    :if value equal stop
+    :send value
+    :pass_to value
+    :if value
+      equal stop
         :finish suspend function
     :send complete function
 
-coroutine1 is [testCoroutine]
-value1_1 receive first from :coroutine1 by_using Apple
-value1_2 receive first from :coroutine1
-value1_3 receive first from :coroutine1 by_using stop
+#coroutine1 is [testCoroutine]
+#  by_using Apple
+#value1_1 receive first from coroutine1
+#value1_2 receive first from coroutine1
+#value1_3 receive first from coroutine1 by_using stop
 
 # define Project
 

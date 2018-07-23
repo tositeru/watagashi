@@ -11,6 +11,7 @@
 #include "mode/multiLineComment.h"
 #include "mode/normal.h"
 #include "mode/doNothing.h"
+#include "mode/createCoroutine.h"
 
 using namespace std;
 
@@ -297,15 +298,24 @@ void parseValue(Enviroment& env, Line& valueLine)
         // parse Object
         auto [objectNestName, p] = parseObjectName(valueLine, 0);
 
-        ObjectDefined const* pObjectDefined = env.searchObjdectDefined(objectNestName);
-        if (&Value::arrayDefined == pObjectDefined) {
+        Value const* pTypeObject = env.searchTypeObject(objectNestName);
+        if (pTypeObject == &Value::arrayDefined) {
             env.currentScope().value().init(Value::Type::Array);
             auto startArrayElement = valueLine.skipSpace(p + 1);
             parseArrayElement(env, valueLine, startArrayElement);
-        } else if(&Value::emptyObjectDefined == pObjectDefined) {
+
+        } else if(pTypeObject == &Value::emptyObjectDefined) {
             env.currentScope().value().init(Value::Type::Object);
+
+        } else if (pTypeObject->type == Value::Type::ObjectDefined) {
+            env.currentScope().value() = Object(&pTypeObject->get<ObjectDefined>());
+
+        } else if (pTypeObject->type == Value::Type::Function) {
+            env.currentScope().value() = Coroutine(&pTypeObject->get<Function>());
+            env.pushMode(std::make_shared<CreateCoroutineParseMode>());
+            env.currentMode()->parse(env, Line(valueLine, p+1));
         } else {
-            env.currentScope().value() = Object(pObjectDefined);
+            AWESOME_THROW(SyntaxException) << "'" << Value::toString(pTypeObject->type) << "' is not type object";
         }
 
     } else if ('\\' == *valueLine.get(0)) {
@@ -340,13 +350,21 @@ Value parseValueInSingleLine(Enviroment const& env, Line& valueLine)
         // parse Object
         auto[objectNestName, p] = parseObjectName(valueLine, 0);
 
-        ObjectDefined const* pObjectDefined = env.searchObjdectDefined(objectNestName);
-        if (&Value::arrayDefined == pObjectDefined) {
+        Value const* pTypeObject = env.searchTypeObject(objectNestName);
+        if (&Value::arrayDefined == pTypeObject) {
             return Value().init(Value::Type::Array);
-        } else if (&Value::emptyObjectDefined == pObjectDefined) {
+
+        } else if (&Value::emptyObjectDefined == pTypeObject) {
             return Value().init(Value::Type::Object);
+
+        } else if(pTypeObject->type == Value::Type::ObjectDefined) {
+            return Object(&pTypeObject->get<ObjectDefined>());
+
+        } else if (pTypeObject->type == Value::Type::Function) {
+            AWESOME_THROW(SyntaxException) << "'Coroutine can not create in single line...";
+
         } else {
-            return Object(pObjectDefined);
+            AWESOME_THROW(SyntaxException) << "'" << Value::toString(pTypeObject->type) << "' is not type object";
         }
 
     } else if ('\\' == *valueLine.get(0)) {

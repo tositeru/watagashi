@@ -11,8 +11,9 @@ namespace parser
 
 struct ParserDesc
 {
-    Value externObj = Object(&Value::emptyObjectDefined);
-    Value globalObj = Object(&Value::emptyObjectDefined);
+    Value externObj = Object(&Value::emptyObjectDefined.get<ObjectDefined>());
+    Value globalObj = Object(&Value::emptyObjectDefined.get<ObjectDefined>());
+    std::vector<Value> arguments;
     Location location;
 };
 

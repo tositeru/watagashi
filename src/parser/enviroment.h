@@ -20,7 +20,15 @@ struct Enviroment
 
     Value externObj;
     Location location;
+    std::vector<Value> arguments;
     std::vector<Value> returnValues;
+    enum class Status {
+        StandBy,
+        Run,
+        Suspension,
+        Completion,
+    };
+    Status status;
 
     explicit Enviroment(char const* source_, std::size_t length);
     explicit Enviroment(std::string const& source_);
@@ -41,7 +49,7 @@ struct Enviroment
     Value const* searchValue(std::list<std::string> const& nestName, bool doGetParent)const;
     Value* searchValue(std::list<std::string> const& nestName, bool doGetParent, std::string* pOutErrorMessage);
     Value const* searchValue(std::list<std::string> const& nestName, bool doGetParent, std::string* pOutErrorMessage)const;
-    ObjectDefined const* searchObjdectDefined(std::list<boost::string_view> const& nestName)const;
+    Value const* searchTypeObject(std::list<boost::string_view> const& nestName)const;
 
     size_t calCurrentRow()const;
 

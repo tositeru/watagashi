@@ -108,6 +108,8 @@ void IScope::close(Enviroment& env)
         str = expandVariable(str, env);
     } else if (Value::Type::Function == this->valueType()) {
         env.popMode();
+    } else if (Value::Type::Coroutine == this->valueType()) {
+        env.popMode();
     }
 
     // set parsing value to the parent
@@ -401,7 +403,7 @@ BranchScope::BranchScope(IScope& parentScope, Value const* pSwitchTargetVariable
     , mFalseCount(0)
     , mLogicOp(LogicOperator::Continue)
     , mDoSkip(false)
-    , mLocalVariables(&Value::emptyObjectDefined)
+    , mLocalVariables(&Value::emptyObjectDefined.get<ObjectDefined>())
 {}
 
 IScope::Type BranchScope::type()const
@@ -617,7 +619,7 @@ void DefineFunctionScope::close(Enviroment& env)
 
     auto& function = this->mParentScope.value().get<Function>();
     switch (this->mOp) {
-    case DefineFunctionOperator::ToPass:
+    case DefineFunctionOperator::ToReceive:
         function.arguments.reserve(this->mElements.size());
         for (auto&& e : this->mElements) {
             function.arguments.emplace_back(e.get<Value::argument>());
@@ -687,7 +689,7 @@ void DefineFunctionScope::setValueToCurrentElement(Value const& value)
 {
     auto& element = this->mElements.back();
     switch (this->mOp) {
-    case DefineFunctionOperator::ToPass:
+    case DefineFunctionOperator::ToReceive:
     {
         auto& arg = element.get<Argument>();
         arg.defaultValue = value;
@@ -714,38 +716,35 @@ void DefineFunctionScope::appendContentsLine(Enviroment const& env, std::string 
 //  class CallFunctionScope
 //
 //----------------------------------------------------------------------------------
-CallFunctionScope::CallFunctionScope(IScope& parentScope, Function const& function)
+CallFunctionScope::CallFunctionScope(IScope& parentScope, Value& function)
     : mParentScope(parentScope)
     , mFunction(function)
 {
-    this->mArguments.reserve(function.arguments.size());
+    if (this->mFunction.type == Value::Type::Function) {
+        auto& function = this->mFunction.get<Value::function>();
+        this->mArguments.reserve(function.arguments.size());
+    } else if(this->mFunction.type == Value::Type::Coroutine) {
+        auto& coroutine = this->mFunction.get<Value::coroutine>();
+        this->mArguments.reserve(coroutine.pFunction->arguments.size());
+    } else {
+        AWESOME_THROW(FatalException) << "The type other than Function and Coroutine was passed...";
+    }
 }
 
 void CallFunctionScope::close(Enviroment& env)
 {
-    ParserDesc parseDesc;
-    parseDesc.location = this->mFunction.contentsLocation;
-    for (auto&& capture : this->mFunction.captures) {
-        parseDesc.externObj.addMember(capture.name, capture.value);
-    }
-    // setup arguments
-    for (auto index : boost::irange(size_t(0), this->mArguments.size())) {
-        auto& formalArgument = this->mFunction.arguments[index];
-        auto& entity = this->mArguments[index];
-        parseDesc.globalObj.addMember(formalArgument.name, entity);
-    }
-    // setup arguments by default value
-    for (auto index : boost::irange(this->mArguments.size(), this->mFunction.arguments.size())) {
-        auto& formalArgument = this->mFunction.arguments[index];
-        if (formalArgument.defaultValue.type == Value::Type::None) {
-            AWESOME_THROW(SyntaxException)
-                << "Arguments of required number not was passed.";
-        }
-        parseDesc.globalObj.addMember(formalArgument.name, formalArgument.defaultValue);
+    ParseResult result;
+    if (this->mFunction.type == Value::Type::Function) {
+        auto& function = this->mFunction.get<Value::function>();
+        result = function.execute(this->mArguments);
+    } else if (this->mFunction.type == Value::Type::Coroutine) {
+        auto& coroutine = this->mFunction.get<Value::coroutine>();
+
+        result = coroutine.execute(this->mArguments);
+    } else {
+        AWESOME_THROW(FatalException) << "The type other than Function and Coroutine was passed...";
     }
     
-    auto result = parse(this->mFunction.contents, parseDesc);
-
     auto const returnValueCount = std::min(this->mReturnValues.size(), result.returnValues.size());
     for(auto returnValueIndex : boost::irange(size_t(0), returnValueCount)) {
         auto& nestName = this->mReturnValues[returnValueIndex];
@@ -805,7 +804,15 @@ void CallFunctionScope::setReturnValueNames(std::vector<std::list<std::string>>&
 
 Function const& CallFunctionScope::function()const
 {
-    return this->mFunction;
+    if (this->mFunction.type == Value::Type::Function) {
+        return this->mFunction.get<Value::function>();
+    } else if (this->mFunction.type == Value::Type::Coroutine) {
+        auto& coroutine = this->mFunction.get<Value::coroutine>();
+        return *coroutine.pFunction; 
+    }
+
+    AWESOME_THROW(FatalException) << "The type other than Function and Coroutine was passed...";
+    return this->mFunction.get<Value::function>();
 }
 
 //----------------------------------------------------------------------------------
@@ -814,7 +821,7 @@ Function const& CallFunctionScope::function()const
 //
 //----------------------------------------------------------------------------------
 
-CallFunctionArgumentsScope::CallFunctionArgumentsScope(CallFunctionScope& parentScope, size_t expectedArgumentsCount)
+CallFunctionArgumentsScope::CallFunctionArgumentsScope(IScope& parentScope, size_t expectedArgumentsCount)
     : mParentScope(parentScope)
 {
     this->mArguments.reserve(expectedArgumentsCount);
@@ -827,6 +834,16 @@ void CallFunctionArgumentsScope::close(Enviroment& env)
     {
         auto& parentScope = dynamic_cast<CallFunctionScope&>(env.currentScope());
         parentScope.setArguments(this->moveArguments());
+        break;
+    }
+    case IScope::Type::Normal:
+    {
+        if (env.currentScope().valueType() != Value::Type::Coroutine) {
+            AWESOME_THROW(FatalException) << "The parent scope of CallFunctionArgumentsScope must have Coroutine value.";
+        }
+
+        auto& coroutine = env.currentScope().value().get<Value::coroutine>();
+        coroutine.setFunctionArguments(this->moveArguments());
         break;
     }
     default:
@@ -876,7 +893,7 @@ std::vector<Value>&& CallFunctionArgumentsScope::moveArguments()
 //
 //----------------------------------------------------------------------------------
 
-CallFunctionReturnValueScope::CallFunctionReturnValueScope(CallFunctionScope& parentScope)
+CallFunctionReturnValueScope::CallFunctionReturnValueScope(IScope& parentScope)
     : mParentScope(parentScope)
 {}
 
@@ -935,13 +952,16 @@ std::vector<std::list<std::string>>&& CallFunctionReturnValueScope::moveReturnVa
 //  class SendScope
 //
 //----------------------------------------------------------------------------------
-SendScope::SendScope()
+SendScope::SendScope(bool isFinished)
+    : mIsFinished(isFinished)
 {}
 
 void SendScope::close(Enviroment& env)
 {
     env.returnValues = std::move(this->mReturnValues);
     env.popMode();
+    env.status = this->mIsFinished ? Enviroment::Status::Completion
+                                   : Enviroment::Status::Suspension;
 }
 
 Value const* SendScope::searchVariable(std::string const& /*name*/)const
