@@ -178,20 +178,20 @@ returnValue3 receive
 testCoroutine define_function
   to_receive value
   with_contents
-    :send value
-    value is ${value}2
-    :send value
-    :pass_to value
-    :if value
+    :send First ${value}
+    value is \${value}2
+    :send Second ${value}
+    :pass_to var2
+    :if var2
       equal stop
-        :finish suspend function
-    :send complete function
+        :finish suspend function. ${var2}
+    :send complete function ${var2}
 
-#coroutine1 is [testCoroutine]
-#  by_using Apple
-#value1_1 receive first from coroutine1
-#value1_2 receive first from coroutine1
-#value1_3 receive first from coroutine1 by_using stop
+coroutine1 is [testCoroutine]
+  by_using Apple
+value1_1 receive first from coroutine1
+value1_2 receive first from coroutine1
+value1_3 receive first from coroutine1 by_using stop
 
 # define Project
 
