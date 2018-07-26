@@ -1,0 +1,22 @@
+###
+  Coroutine Usage
+###
+testCoroutine define_function
+  to_receive value
+  with_contents
+    :send First ${value}
+    value is \${value}2
+    :send Second ${value}
+    :pass_to var2
+    :if var2
+      equal stop
+        :finish suspend function. ${var2}
+    :send complete function ${var2}
+
+coroutine1 is [testCoroutine]
+  by_using Apple
+value1_1 receive first from coroutine1
+value1_2 receive first from coroutine1
+value1_3 receive first from coroutine1 by_using stop
+
+# define Project

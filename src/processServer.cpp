@@ -12,46 +12,14 @@ namespace fs = boost::filesystem;
 namespace watagashi
 {
 
-Process::BuildResult Process::compile()
-{
-    if(!this->env.preprocessCompiler(BuildEnviroment::TaskType::eCompile, this->inputFilepath, outputFilepath)) {
-        cout << "skip compile " << this->inputFilepath << endl;
-        return BuildResult::eSkip;
-    }
-            
-    // file to preprocess
-    if(this->env.isExistItem(BuildEnviroment::HIERARCHY::eFileToProcess)) {
-        this->env.fileToProcess().exePreprocess(this->inputFilepath);
-    }
-    
-    // compile .obj file
-    
-    auto cmdStr = this->env.createCompileCommand(this->inputFilepath, this->outputFilepath);
-    cout << "running: " << cmdStr << endl;
-    
-    auto result = std::system(cmdStr.c_str());
-    if(0 != result) {
-        return BuildResult::eFailed;
-    } else {
-        if(this->env.isExistItem(BuildEnviroment::HIERARCHY::eFileToProcess)) {
-            this->env.fileToProcess().exePostprocess(this->inputFilepath);
-        }
-        
-        if(!this->env.postprocessCompiler(BuildEnviroment::TaskType::eCompile, this->inputFilepath, this->outputFilepath)) {
-            return BuildResult::eFailed;
-        }
-        return BuildResult::eSuccess;
-    }
-}
-
 //--------------------------------------------------------------------------------------
 //
 //  class Process_
 //
 //--------------------------------------------------------------------------------------
 
-Process_::Process_(
-    Builder_ const& builder,
+Process::Process(
+    Builder const& builder,
     data::Compiler const& compiler,
     boost::filesystem::path const& inputFilepath,
     boost::filesystem::path const& outputFilepath)
@@ -61,8 +29,9 @@ Process_::Process_(
     , outputFilepath(outputFilepath)
 {}
 
-Process_::BuildResult Process_::compile()const
+Process::BuildResult Process::compile()const
 {
+    //cout << "run " << this->inputFilepath << endl;
     auto& project = builder.project();
     auto& taskBundle = data::getTaskBundle(compiler, project.type);
     auto& task = taskBundle.compileObj;
@@ -80,10 +49,36 @@ Process_::BuildResult Process_::compile()const
             : BuildResult::Failed;
     }
 
-    auto cmd = data::makeCompileCommand(taskBundle.compileObj, this->inputFilepath, this->outputFilepath, project);
+    // check match Filter
+    data::FileFilter const* pFileFilter = nullptr;
+    for (auto&& filter : project.fileFilters) {
+        if (matchFilepath(filter.targetKeyward, inputFilepath, project.rootDirectory)) {
+            pFileFilter = &filter;
+            break;
+        }
+    }
+    if (pFileFilter) {
+        auto result = data::runProcesses(pFileFilter->preprocess, runData);
+        if (data::TaskProcess::Result::Success != result) {
+            return preprocessResult == data::TaskProcess::Result::Skip
+                ? BuildResult::Skip
+                : BuildResult::Failed;
+        }
+    }
+
+    auto cmd = data::makeCompileCommand(taskBundle.compileObj, this->inputFilepath, this->outputFilepath, project, pFileFilter);
     cout << "running: " << cmd << endl;
     if (!runCommand(cmd)) {
         return BuildResult::Failed;
+    }
+
+    if (pFileFilter) {
+        auto result = data::runProcesses(pFileFilter->postprocess, runData);
+        if (data::TaskProcess::Result::Success != result) {
+            return preprocessResult == data::TaskProcess::Result::Skip
+                ? BuildResult::Skip
+                : BuildResult::Failed;
+        }
     }
 
     auto postprocessResult = data::runProcesses(task.postprocesses, runData);
@@ -116,50 +111,12 @@ ProcessServer::~ProcessServer()
 void ProcessServer::addProcess(std::unique_ptr<Process> pProcess)
 {
     std::lock_guard<std::mutex> lock(this->mMutex);
-    
-    this->mpProcessQueue.emplace(std::move(pProcess));
-    ++this->mProcessSum;
-}
-
-std::unique_ptr<Process> ProcessServer::serveProcess()
-{
-    std::lock_guard<std::mutex> lock(this->mMutex);
-    if(!this->mpProcessQueue.empty()) {    
-        auto process = std::move(this->mpProcessQueue.front());
-        this->mpProcessQueue.pop();
-        return std::move(process);
-    } else {
-        return nullptr;
-    }
-}
-
-void ProcessServer::notifyEndOfProcess(Process::BuildResult result)
-{
-    std::lock_guard<std::mutex> lock(this->mMutex);
-    ++this->mEndProcessSum;
-    
-    switch(result) {
-    case Process::BuildResult::eSuccess:
-        ++this->mSuccessCount;
-        break;
-    case Process::BuildResult::eSkip:
-        ++this->mSkipLinkCount;
-        break;
-    case Process::BuildResult::eFailed:
-        ++this->mFailedCount;
-        break;
-    }
-}
-
-void ProcessServer::addProcess(std::unique_ptr<Process_> pProcess)
-{
-    std::lock_guard<std::mutex> lock(this->mMutex);
 
     this->mpProcess_Queue.emplace(std::move(pProcess));
     ++this->mProcessSum;
 }
 
-std::unique_ptr<Process_> ProcessServer::serveProcess_()
+std::unique_ptr<Process> ProcessServer::serveProcess_()
 {
     std::lock_guard<std::mutex> lock(this->mMutex);
     if (!this->mpProcess_Queue.empty()) {
@@ -171,19 +128,19 @@ std::unique_ptr<Process_> ProcessServer::serveProcess_()
     }
 }
 
-void ProcessServer::notifyEndOfProcess(Process_::BuildResult result)
+void ProcessServer::notifyEndOfProcess(Process::BuildResult result)
 {
     std::lock_guard<std::mutex> lock(this->mMutex);
     ++this->mEndProcessSum;
 
     switch (result) {
-    case Process_::BuildResult::Success:
+    case Process::BuildResult::Success:
         ++this->mSuccessCount;
         break;
-    case Process_::BuildResult::Skip:
+    case Process::BuildResult::Skip:
         ++this->mSkipLinkCount;
         break;
-    case Process_::BuildResult::Failed:
+    case Process::BuildResult::Failed:
         ++this->mFailedCount;
         break;
     }

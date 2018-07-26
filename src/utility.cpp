@@ -2,8 +2,9 @@
 
 #include <sstream>
 #include <iostream>
+#include <regex>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #include <Dbghelp.h>
 #pragma comment(lib, "Dbghelp.lib")
@@ -12,9 +13,6 @@
 
 namespace fs = boost::filesystem;
 using namespace std;
-
-namespace watagashi
-{
 
 std::string readFile(const fs::path& filepath)
 {
@@ -56,9 +54,43 @@ std::vector<std::string> split(const std::string& str, char delimiter)
 
 bool runCommand(char const* command)
 {
-    return 0 == std::system(command);
+    if ('\0' == command[0]) {
+        return true;
+    } else {
+        return 0 == std::system(command);
+    }
 }
 
+bool matchFilepath(
+    const std::string& patternStr,
+    const boost::filesystem::path& filepath,
+    const boost::filesystem::path& standardPath)
+{
+    auto relativeTargetPath = fs::relative(filepath, standardPath);
+
+    if (patternStr.front() == '@') {
+        // regular expressions check
+        std::regex regex(patternStr.substr(1));
+        if (std::regex_search(relativeTargetPath.string(), regex)) {
+            return true;
+        }
+    } else {
+        fs::path patternPath(patternStr);
+        patternPath = fs::relative(standardPath / patternPath);
+        if (patternStr.back() == '/') {
+            //directory check
+            auto checkPath = fs::relative(filepath, patternPath);
+            if (std::string::npos != checkPath.string().find("../")) {
+                return true;
+            }
+        } else {
+            //filename check
+            if (fs::equivalent(patternPath, fs::relative(filepath))) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 std::string demangle(char const* name)
@@ -66,7 +98,7 @@ std::string demangle(char const* name)
 #if defined(_WIN32) || defined(WIN32) || defined(BOOST_WINDOWS)
     std::string result;
     result.resize(std::strlen(name) * 2);// Enough buffers are necessary
-    DWORD length = UnDecorateSymbolName(name, &result[0], result.size(), UNDNAME_COMPLETE);
+    DWORD length = UnDecorateSymbolName(name, &result[0], (DWORD)result.size(), UNDNAME_COMPLETE);
     if (0 == length) {
         throw std::runtime_error("");
     }

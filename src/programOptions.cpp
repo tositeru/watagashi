@@ -35,9 +35,6 @@ bool ProgramOptions::parse(int argv, char** args)
             R"(this task list up build target files.)" "\n"
             R"(Usage) watagsi listup -p <project name>)"
         );
-        listupOptions.add_options()
-            ("check-regex", po::value<std::string>(&this->regexPattern)->default_value(""), "check regex. this option enable only task is listup.")
-        ;
         po::options_description all(
             R"(Watagasi is negative list based c/c++ build system.)" "\n"
             R"(Usage) watagasi <task> [options])" "\n"
@@ -45,10 +42,9 @@ bool ProgramOptions::parse(int argv, char** args)
         );
         all.add_options()
             ("help,h", "show this.")
-            ("task", po::value<std::string>(&this->task)->default_value("build"), R"(run task. choose to "build", "clean", "rebuild", "listup", "show" or "install".)")
+            ("task", po::value<std::string>(&this->task)->default_value("build"), R"(run task. choose to "build", "clean", "rebuild", "listup", "show", "install" or "interactive".)")
             ("config,c", po::value<std::string>(&this->configFilepath)->default_value("build.watagashi"), "use config file.")
             ("project,p", po::value<std::string>(&this->targetProject), "target project name")
-            ("build-setting,b", po::value<std::string>(&this->targetBuildSetting)->default_value("default"), "target build setting name.")
             ("thread-count,t", po::value<int>(&this->threadCount)->default_value(1), "thread count.")
             ("variable,V", po::value<std::vector<std::string>>(&variables), "define variable. this option can be multiple. the defined variable is applied with the highest priority.")
         ;
@@ -68,18 +64,18 @@ bool ProgramOptions::parse(int argv, char** args)
             return false;
         }
         
-        if(!vm.count("project")
-            && eTASK_SHOW_PROJECTS != this->taskType()
-            && eTASK_CREATE != this->taskType()) {
+        if (!vm.count("project")
+            && TaskType::ShowProjects != this->taskType()
+            && TaskType::Interactive != this->taskType()) {
             cerr << "error: must specify --project(-p) option" << endl;
             return false;
         }
         
-        boost::range::transform(this->task, this->task.begin(), [](char c){ return ::tolower(c); });
+        boost::range::transform(this->task, this->task.begin(), [](char c){ return static_cast<char>(::tolower(c)); });
         
-        this->currentPath = fs::path(this->configFilepath).parent_path().string();
-        if(this->currentPath.empty()) {
-            this->currentPath = "./";
+        this->rootDirectories = fs::path(this->configFilepath).parent_path().string();
+        if(this->rootDirectories.empty()) {
+            this->rootDirectories = "./";
         }
         
         this->userDefinedVaraibles.clear();
@@ -92,10 +88,10 @@ bool ProgramOptions::parse(int argv, char** args)
                     cerr << endl;
                     continue;
                 }
-                
                 this->userDefinedVaraibles.insert({strings[0], strings[1]});
             }
         }
+
     } catch(std::exception& e) {
         cerr << e.what() << endl;
         cerr << "Failed parse program options..." << endl;
@@ -110,17 +106,17 @@ bool ProgramOptions::parse(int argv, char** args)
 ProgramOptions::TaskType ProgramOptions::taskType()const
 {
     static const std::unordered_map<std::string, TaskType> sTable = {
-        {"build", eTASK_BUILD},
-        {"clean", eTASK_CLEAN},
-        {"rebuild", eTASK_REBUILD},
-        {"listup", eTASK_LISTUP_FILES},
-        {"install", eTASK_INSTALL},
-        {"show", eTASK_SHOW_PROJECTS},
-        {"create", eTASK_CREATE}
+        {"build", TaskType::Build},
+        {"clean", TaskType::Clean},
+        {"rebuild", TaskType::Rebuild},
+        {"listup", TaskType::ListupFiles},
+        {"install", TaskType::Install},
+        {"show", TaskType::ShowProjects},
+        {"interactive", TaskType::Interactive}
     };
     auto it = sTable.find(this->task);
     if(sTable.end() == it) {
-        return eTASK_UNKNOWN;
+        return TaskType::Unknown;
     }
     return it->second;
 }

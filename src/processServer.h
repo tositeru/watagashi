@@ -6,27 +6,16 @@
 
 #include <boost/filesystem.hpp>
 
-#include "buildEnviroment.h"
-
 namespace watagashi
 {
 
-struct Process
+class Builder;
+namespace data
 {
-    enum class BuildResult {
-        eSuccess,
-        eSkip,
-        eFailed,
-    };
+struct Compiler;
+}
 
-    BuildEnviroment env;
-    boost::filesystem::path inputFilepath;
-    boost::filesystem::path outputFilepath;
-    
-    BuildResult compile();
-};
-
-struct Process_
+struct Process
 {
     enum class BuildResult {
         Success,
@@ -34,13 +23,13 @@ struct Process_
         Failed,
     };
 
-    Builder_ const& builder;
+    Builder const& builder;
     data::Compiler const& compiler;
     boost::filesystem::path inputFilepath;
     boost::filesystem::path outputFilepath;
 
-    Process_(
-        Builder_ const& builder,
+    Process(
+        Builder const& builder,
         data::Compiler const& compiler,
         boost::filesystem::path const& inputFilepath,
         boost::filesystem::path const& outputFilepath);
@@ -48,18 +37,14 @@ struct Process_
 };
 
 class ProcessServer
-{    
+{
 public:
     ProcessServer();
     ~ProcessServer();
     
     void addProcess(std::unique_ptr<Process> pProcess);
-    std::unique_ptr<Process> serveProcess();
+    std::unique_ptr<Process> serveProcess_();
     void notifyEndOfProcess(Process::BuildResult result);
-
-    void addProcess(std::unique_ptr<Process_> pProcess);
-    std::unique_ptr<Process_> serveProcess_();
-    void notifyEndOfProcess(Process_::BuildResult result);
 
     bool isFinish()const;
 
@@ -70,8 +55,7 @@ public:
     
 private:
     std::mutex mMutex;
-    std::queue<std::unique_ptr<Process>> mpProcessQueue;
-    std::queue<std::unique_ptr<Process_>> mpProcess_Queue;
+    std::queue<std::unique_ptr<Process>> mpProcess_Queue;
     size_t mProcessSum;
     size_t mEndProcessSum;
     

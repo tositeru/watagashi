@@ -1,78 +1,32 @@
-{
-"projects": [ {
-	"name": "watagashi",
-	"type": "exe",
-	"buildSettings": [	{
-		"name": "default",
-		"compiler": "clang++",
-		"preprocess": "echo preprocess to building. ${PROJECT_NAME}",
-		"linkPreprocess": "echo link preprocess ${BUILD_SETTING_NAME} ${COMPILER} ${OUTPUT_NAME} ${OUTPUT_PATH} ${INTERMEDIATE_PATH}",
-		"postprocess": "echo postprocess to building",
-		"targetDirectories": [ {
-			"path": "./src",
-			"fileFilters": [{
-				"extensions": ["cpp", "c"],
-				"filesToProcess": [{
-					"filepath": "main.cpp",
-					"preprocess": "echo files to preprocess",
-					"postprocess": "echo files to postprocess"
-				}]
-			}],
-			"ignores": [
-				"main.c",
-				"@json11/test"
-			]
-		} ],
-		"compileOptions": [
-			"-O2",
-			"-std=c++17"
-		],
-		"libraryDirectories": [],
-		"linkOptions": [ ],
-		"linkLibraries": [
-			"pthread",
-			"boost_system",
-			"boost_filesystem",
-			"boost_program_options",
-			"boost_stacktrace_basic"
-		],
-		"outputConfig": {
-			"name": "watagashi",
-			"outputPath": "./output",
-			"intermediatePath": "./objs"
-		}
-	} ]
-},{
-	"name": "newConfig",
-	"type": "exe",
-	"buildSettings": [	{
-		"name": "default",
-		"compiler": "clang++",
-		"targetDirectories": [ {
-				"path": "./src/json11",
-				"fileFilters": [{ "extensions": ["cpp"] }],
-				"ignores": ["@json11/test", "main.cpp"]
-			}, {
-				"path": "./newConfig",
-				"fileFilters": [{ "extensions": ["cpp"] }]
-		}],
-		"compileOptions": [
-			"-std=c++17"
-		],
-		"libraryDirectories": [],
-		"linkOptions": [ ],
-		"linkLibraries": [
-			"pthread",
-			"boost_system",
-			"boost_filesystem",
-			"boost_program_options",
-			"boost_stacktrace_basic"
-		],
-		"outputConfig": {
-			"name": "newConfig",
-			"outputPath": "./output",
-			"intermediatePath": "./objs"
-		}
-	} ]
-}]]
-}
+libraryPrefix is lib
+librarySuffix is -vc141-mt-s-x64-1_67
+
+watagashi is [Project]
+  type is exe
+  compiler is clang++
+  targets are [Directory]
+      path is src
+      extensions are cpp, c
+      ignores are main.c
+  fileFilters are [FileFilter]
+      filepath is @main.cpp
+      preprocess is echo compile main.cpp
+      postprocess is echo finish to compile main.cpp
+  compileOptions are -O2, -std=c++17
+  includeDirectories are C:\Boost\include\boost-1_67
+  linkLibraries are
+    ${libraryPrefix}boost_system${librarySuffix},
+    ${libraryPrefix}boost_filesystem${librarySuffix},
+    ${libraryPrefix}boost_program_options${librarySuffix}
+  libraryDirectories are C:\Boost\lib
+  outputName is watagashi
+  outputPath is output
+  intermediatePath is intermediate
+  preprocess is echo Hello Watagashi
+    echo str1 variable is "${str1}"
+
+# debug version
+watagashi_debug copy watagashi
+  compileOptions are -Od, -std=c++17 ## override ##
+  outputName is watagashi_d
+

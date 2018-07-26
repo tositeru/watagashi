@@ -4,15 +4,14 @@
 #include <fstream>
 #include <boost/filesystem.hpp>
 
-namespace watagashi
-{
-
 std::string readFile(const boost::filesystem::path& filepath);
 bool createDirectory(const boost::filesystem::path& path);
 
 std::vector<std::string> split(const std::string& str, char delimiter);
 
 bool runCommand(char const* command);
+bool matchFilepath(const std::string& patternStr, const boost::filesystem::path& filepath, const boost::filesystem::path& standardPath);
+
 inline bool runCommand(std::string const& command) {
     return runCommand(command.c_str());
 }
@@ -32,7 +31,6 @@ public:
         this->mPred();
     }
 };
-}
 
 namespace std
 {

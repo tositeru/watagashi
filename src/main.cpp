@@ -1,62 +1,70 @@
 #include <iostream>
 
 #include <boost/filesystem.hpp>
+#include <boost/range/algorithm/for_each.hpp>
+#include <boost/range/adaptor/filtered.hpp>
 
 #include "utility.h"
-#include "config.h"
-#include "configJsonParser.h"
 #include "builder.h"
 #include "programOptions.h"
 #include "exception.hpp"
-#include "specialVariables.h"
 #include "includeFileAnalyzer.h"
 #include "data.h"
+#include "parser/parser.h"
+#include "parser/value.h"
+#include "parser/parserUtility.h"
 
-using namespace json11;
 using namespace std;
 using namespace watagashi;
+namespace fs = boost::filesystem;
 
-void createConfigFile(const watagashi::ProgramOptions& opts);
+static data::Project createProject(parser::Value const& externObj, watagashi::ProgramOptions const& options);
+static void setBuilder(Builder &builder, parser::Value const& configData);
+static void definedBuildInData(parser::Value& externObj);
 static data::Compiler createClangCppCompiler();
 static data::Compiler createGccCppCompiler();
+static void showProjects(parser::Value const& configData);
 
 ExceptionHandlerSetter exceptionHandlerSetter;
 
 int main(int argn, char** args)
 {
-    auto pOpts = std::make_shared<watagashi::ProgramOptions>();
     try {
-        if(!pOpts->parse(argn, args)) {
+        auto options = watagashi::ProgramOptions();
+        if (!options.parse(argn, args)) {
             return 0;
         }
-        
-        if(watagashi::ProgramOptions::eTASK_CREATE == pOpts->taskType()) {
-            createConfigFile(*pOpts);
+        auto taskType = options.taskType();
+
+        parser::ParserDesc desc;
+        definedBuildInData(desc.externObj);
+        auto parseResult = parser::parse(boost::filesystem::path(options.configFilepath), desc);
+        auto& configData = parseResult.globalObj;
+
+        switch (taskType) {
+        case ProgramOptions::TaskType::Interactive:
+            parser::confirmValueInInteractive(configData);
+            return 0;
+        case ProgramOptions::TaskType::ShowProjects:
+            showProjects(configData);
             return 0;
         }
 
-        {
-            data::Project project;
-            project.name = "test";
-            project.type = data::Project::Type::Exe;
-            project.compiler = "clang++";
-            project.outputName = project.name;
-            project.outputPath = "output";
-            project.intermediatePath = "intermediate";
-            project.preprocess = "echo Preprocess";
-            project.linkPreprocess = "echo run Link Preprocess";
-            project.postprocess = "echo run Postprocess";
-            project.rootDirectory = "../";
-            project.targets = {
-                "testSrc/main.cpp",
-                "testSrc/A.cpp",
-            };
+        data::Project project = createProject(configData, options);
+        Builder builder(project, options);
+        setBuilder(builder, configData);
+        builder.addCompiler(createClangCppCompiler());
+        builder.addCompiler(createGccCppCompiler());
 
-            Builder_ builder(project, *pOpts);
-            builder.addCompiler(createClangCppCompiler());
-            builder.addCompiler(createGccCppCompiler());
-            builder.rebuild();
-            builder.listupFiles();
+        switch (options.taskType()) {
+        case ProgramOptions::TaskType::Build:       builder.build(); break;
+        case ProgramOptions::TaskType::Clean:       builder.clean(); break;
+        case ProgramOptions::TaskType::Rebuild:     builder.rebuild(); break;
+        case ProgramOptions::TaskType::ListupFiles: builder.listupFiles(); break;
+        case ProgramOptions::TaskType::Install:     builder.install(); break;
+        default:
+            cerr << "unknwon task type..." << endl;
+            return 1;
         }
     } catch (...) {
         ExceptionHandlerSetter::terminate();
@@ -64,136 +72,213 @@ int main(int argn, char** args)
     }
 
     return 0;
-
-    const auto& configFilepath = pOpts->configFilepath;
-    std::string json_str = watagashi::readFile(configFilepath);
-    if(json_str.empty()) {
-        cerr << "failed reading \"" << configFilepath << "\"" << endl;
-        return 1;
-    }
-    
-    std::string error;
-    auto configJson = Json::parse(json_str, error);
-    if(!error.empty()) {
-        cerr << "failed parse json \"" << configFilepath << "\"" << endl;
-        cerr << error << endl;
-        return 1;
-    }
-
-    // parse
-    auto pRootConfig = std::make_shared<watagashi::config::RootConfig>();
-    //watagashi::config::parse(*pRootConfig, configJson);
-    if(!watagashi::config::json::parse(*pRootConfig, configJson)){
-        return 1;
-    }
-    
-    watagashi::Builder builder;
-    switch(pOpts->taskType()) {
-    case watagashi::ProgramOptions::eTASK_BUILD:
-        builder.build(pRootConfig, pOpts);
-        break;
-    case watagashi::ProgramOptions::eTASK_CLEAN:
-        builder.clean(pRootConfig, pOpts);
-        break;
-    case watagashi::ProgramOptions::eTASK_REBUILD:
-        builder.clean(pRootConfig, pOpts);
-        builder.build(pRootConfig, pOpts);
-        break;
-    case watagashi::ProgramOptions::eTASK_LISTUP_FILES:
-        builder.listupFiles(pRootConfig, pOpts);
-        break;
-    case watagashi::ProgramOptions::eTASK_INSTALL:
-        builder.install(pRootConfig, pOpts);
-        break;
-    case watagashi::ProgramOptions::eTASK_SHOW_PROJECTS:
-        builder.showProjects(pRootConfig, pOpts);
-        break;
-    default:
-        AWESOME_THROW(std::runtime_error) << "unknown task type.";
-    }
-
-    return 0;
 }
 
-void createConfigFile(const watagashi::ProgramOptions& opts)
+void showProjects(parser::Value const& configData)
 {
-    using namespace watagashi;
-    namespace fs = boost::filesystem;
-    
-    config::RootConfig rootConfig;
-    config::Project project;
-    config::BuildSetting buildSetting;
-    buildSetting.targetDirectories.push_back({});
-    auto& targetDir = buildSetting.targetDirectories[0];
-    targetDir.fileFilters.push_back({});
-    auto& fileFilter = targetDir.fileFilters[0];
+    cout << "project list" << endl;
+    auto& configObj = configData.get<parser::Value::object>();
+    for (auto& [name, value] : configObj.members) {
+        if (parser::Value::Type::Object != value.type) {
+            continue;
+        }
 
-    {
-        
-        cout << "project name > ";
-        cin >> project.name;
-        do {
-            cout << "project type (exe,static,shared) > ";
-            std::string str;
-            cin >> str;
-            project.type = project.toType(str);
-            if(config::Project::eUnknown == project.type) {
-                cerr << "unknown type input..." << endl;
+        auto& obj = value.get<parser::Value::object>();
+        if ("Project" != obj.pDefined->name) {
+            continue;
+        }
+        cout << "  " << name << endl;
+    }
+}
+
+bool checkExtention(const fs::path& path, std::unordered_set<std::string> const& extensions)
+{
+    auto ext = path.extension();
+    auto str = ext.string();
+    return extensions.end() != extensions.find(str.c_str() + 1);
+}
+
+data::Project createProject(parser::Value const& configData, watagashi::ProgramOptions const& options)
+{
+    using namespace parser;
+    std::string projectName = options.targetProject;
+    auto projectValue = configData.getChild(projectName);
+    if (parser::Value::Type::Object != projectValue.type) {
+        AWESOME_THROW(std::runtime_error)
+            << "don't found project '" << projectName << "' or project type is not 'Object'...";
+    }
+
+    auto getString = [&](std::string const& name, std::string const& defaultValue, Value const& value) {
+        auto& str = value.getChild(name).get<Value::string>();
+        if (str.empty()) {
+            return defaultValue;
+        }
+        return str;
+    };
+
+    auto getNumber = [&](std::string const& name, auto const& defaultValue, Value const& value) {
+        auto& num = value.getChild(name).get<Value::number>();
+        if (num == 0.0) {
+            return defaultValue;
+        }
+        return static_cast<decltype(defaultValue)>(num);
+    };
+
+    auto getStringArray = [&](auto& out, std::string const& name, Value const& value) {
+        auto& arr = value.getChild(name).get<Value::array>();
+        for (auto&& e : arr) {
+            if (Value::Type::String != e.type) {
+                continue;
             }
-        } while(config::Project::eUnknown == project.type);
-    }
-    {
-        cout << "buildSetting name > ";
-        cin >> buildSetting.name;
-        buildSetting.outputConfig.name = project.name;
-        cout << "use compiler > ";
-        cin >> buildSetting.compiler;
-    }
-    {
-        cout << "target directory > ";
-        cin >> targetDir.path;
-    }        
-    {
-        do {
-            cout << "target extension (exit by enter '.') > ";    
-            std::string str;
-            cin >> str;
-            if(str == ".") break;
-            fileFilter.extensions.insert(str);
-        } while(true);
-    }
-    project.buildSettings.insert({buildSetting.name, buildSetting});
-    rootConfig.projects.insert({project.name, project});
+            auto& str = e.get<Value::string>();
+            out.insert(str);
+        }
+    };
 
-/*    
-    json11::Json output;
-    if( !rootConfig.dump(output) ) {
-        std::runtime_error("failed to dump config file...");
+    data::Project project;
+    project.name = projectName;
+    project.rootDirectory = options.rootDirectories;
+    project.type = data::Project::toType(projectValue.getChild("type").get<Value::string>());
+    project.compiler = projectValue.getChild("compiler").get<Value::string>();
+    project.outputName = getString("outputName", project.name, projectValue);
+    project.outputPath = getString("outputPath", "output", projectValue);
+    project.intermediatePath = getString("intermediatePath", "intermediate", projectValue);
+    getStringArray(project.compileOptions, "compileOptions", projectValue);
+    getStringArray(project.includeDirectories, "includeDirectories", projectValue);
+    getStringArray(project.linkOptions, "linkOptions", projectValue);
+    getStringArray(project.linkLibraries, "linkLibraries", projectValue);
+    getStringArray(project.libraryDirectories, "libraryDirectories", projectValue);
+    project.version = getNumber("version", static_cast<int>(0), projectValue);
+    project.minorNumber = getNumber("minorNumber", static_cast<int>(0), projectValue);
+    project.releaseNumber = getNumber("releaseNumber", static_cast<int>(0), projectValue);
+    project.preprocess = getString("preprocess", "", projectValue);
+    project.linkPreprocess = getString("linkPreprocess", "", projectValue);
+    project.postprocess = getString("postprocess", "", projectValue);
+
+    {
+        auto& arr = projectValue.getChild("targets").get<Value::array>();
+        for (auto&& e : arr) {
+            switch (e.type) {
+            case Value::Type::Object:
+            {
+                auto& directory = e.get<Value::object>();
+
+                std::unordered_set<std::string> extensions;
+                for (auto&& ext : directory.members["extensions"].get<Value::array>()) {
+                    if (Value::Type::String != ext.type) {
+                        continue;
+                    }
+                    extensions.insert(ext.get<Value::string>());
+                }
+                std::vector<std::string> ignores;
+                for (auto&& ignorePattern : directory.members["ignores"].get<Value::array>()) {
+                    if (Value::Type::String != ignorePattern.type) {
+                        continue;
+                    }
+                    ignores.push_back(ignorePattern.get<Value::string>());
+                }
+
+                boost::filesystem::path path = directory.members["path"].get<Value::string>();
+                boost::for_each(
+                    boost::filesystem::recursive_directory_iterator(project.rootDirectory / path)
+                    | boost::adaptors::filtered([&](boost::filesystem::path const& path) {
+                       if (!checkExtention(path, extensions)) {
+                           return false;
+                       }
+                       for (auto&& ignorePattern : ignores) {
+                           if (matchFilepath(ignorePattern, path, project.rootDirectory)) {
+                               return false;
+                           }
+                       }
+                       return true;
+                    })
+                    , [&](boost::filesystem::path const& filepath) {
+                        project.targets.insert(fs::relative(filepath, project.rootDirectory));
+                    }
+                );
+
+                break;
+            }
+            case Value::Type::String:
+                project.targets.insert(e.get<Value::string>());
+                break;
+            default:
+                break;
+            }
+        }
     }
-*/
-    auto output = watagashi::config::json::dump(rootConfig);
-    cout << R"(config filepath (suffix ".watagashi") > )";
-    boost::filesystem::path configFilepath;
-    cin >> configFilepath;
-    configFilepath += ".watagashi";
-    if(fs::exists(configFilepath)) {
-        cout << configFilepath << "is exsit. do override? (Y/N) >";
-        std::string c;
-        cin >> c;
-        if(::tolower(c[0]) != 'y') {
-            cout << "suspension create config file." << endl;
-            return ;
+    {
+        auto& arr = projectValue.getChild("fileFilters").get<Value::array>();
+        for (auto&& e : arr) {
+            if (Value::Type::Object != e.type) {
+                continue;
+            }
+            data::FileFilter fileFilter;
+            fileFilter.targetKeyward = getString("filepath", "", e);
+            getStringArray(fileFilter.compileOptions, "compileOptions", e);
+            getStringArray(fileFilter.includeDirectories, "includeDirectories", e);
+            auto process = getString("preprocess", "", e);
+            if (!process.empty()) {
+                data::TaskProcess taskProcess;
+                taskProcess.setTypeAndContent(data::TaskProcess::Type::Terminal, std::move(process));
+                fileFilter.preprocess.push_back(taskProcess);
+            }
+            process = getString("postprocess", "", e);
+            if (!process.empty()) {
+                data::TaskProcess taskProcess;
+                taskProcess.setTypeAndContent(data::TaskProcess::Type::Terminal, std::move(process));
+                fileFilter.postprocess.push_back(taskProcess);
+            }
+            project.fileFilters.push_back(fileFilter);
         }
     }
     
-    std::ofstream out(configFilepath.string());
-    if(out.fail()){
-        std::runtime_error("failed to write config file...");
-    }
-    out << output.dump();
-    out.close();
-    
-    cout << "complete create config file." << endl;
+    return project;
+}
+
+void setBuilder(Builder &builder, parser::Value const& configData)
+{
+
+}
+
+void definedBuildInData(parser::Value& externObj)
+{
+    parser::Value projectDefined;
+    projectDefined = parser::ObjectDefined("Project");
+    projectDefined.addMember("type", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+    projectDefined.addMember("targets", parser::MemberDefined(parser::Value::Type::Array, parser::Value::none));
+    projectDefined.addMember("compiler", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+    projectDefined.addMember("outputName", parser::MemberDefined(parser::Value::Type::String, ""s));
+    projectDefined.addMember("outputPath", parser::MemberDefined(parser::Value::Type::String, ""s));
+    projectDefined.addMember("intermediatePath", parser::MemberDefined(parser::Value::Type::String, ""s));
+    projectDefined.addMember("fileFilters", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    projectDefined.addMember("compileOptions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    projectDefined.addMember("includeDirectories", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    projectDefined.addMember("linkOptions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    projectDefined.addMember("linkLibraries", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    projectDefined.addMember("libraryDirectories", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    projectDefined.addMember("version", parser::MemberDefined(parser::Value::Type::Number, 0.0));
+    projectDefined.addMember("minorNumber", parser::MemberDefined(parser::Value::Type::Number, 0.0));
+    projectDefined.addMember("releaseNumber", parser::MemberDefined(parser::Value::Type::Number, 0.0));
+    projectDefined.addMember("preprocess", parser::MemberDefined(parser::Value::Type::String, ""s));
+    projectDefined.addMember("linkPreprocess", parser::MemberDefined(parser::Value::Type::String, ""s));
+    projectDefined.addMember("postprocess", parser::MemberDefined(parser::Value::Type::String, ""s));
+
+    parser::Value directoryDefiend = parser::ObjectDefined("Directory");
+    directoryDefiend.addMember("path", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+    directoryDefiend.addMember("extensions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::none));
+    directoryDefiend.addMember("ignores", parser::MemberDefined(parser::Value::Type::Array, parser::Value::none));
+
+    parser::Value fileFiltersDefined = parser::ObjectDefined("FileFilter");
+    fileFiltersDefined.addMember("filepath", parser::MemberDefined(parser::Value::Type::String, parser::Value::none));
+    fileFiltersDefined.addMember("compileOptions", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    fileFiltersDefined.addMember("includeDirectories", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    fileFiltersDefined.addMember("preprocess", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+    fileFiltersDefined.addMember("postprocess", parser::MemberDefined(parser::Value::Type::Array, parser::Value::array()));
+
+    externObj.addMember("Project", projectDefined);
+    externObj.addMember("Directory", directoryDefiend);
+    externObj.addMember("FileFilter", fileFiltersDefined);
 }
 
 data::Compiler createClangCppCompiler()

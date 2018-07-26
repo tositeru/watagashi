@@ -10,7 +10,7 @@
   number of '#' must match!
 #####
 a is ABCDE ## comment at the end of the line in value ##
-a is ## # ### # a = "## # ###" #
+a is ## # ### # a = "## #### ###" #
 
 # string value
 str1 is Apple is fruits.
@@ -20,7 +20,7 @@ str2 is Multiple line string
 str3 is \19203
 
 # number value
-num is 100
+num1 is 100
 num2 is 1.294
 num3 is 1.34e2
 
@@ -28,11 +28,16 @@ num3 is 1.34e2
 obj1 is [Object]
 # obj1.member1 = "obj1 is Orange"
 member1 in obj1 is Orange # Is "obj1.member1 is Orange" better than? #
+obj1.member1 is [Object]
+m2 in member1 in obj1 is Grape
+obj1.member1.m2 is Orange Orange
 
 obj2 is [Object]
   member1 is Jungo
   member2 is Sabata
   member3 is Lita
+  member4 are Apple
+  
 # copy obj2
 obj3 copy obj2
 
@@ -42,7 +47,7 @@ obj3 copy obj2
 array1 are Circle, Rectangle, # ["Circle", "Rectangle", 222, "321"] #
   222, \321
 array1 push_back Tail ## only push back ##
-array1 remove 0
+# array1 remove 0
 0 in array1 is Cone # Is "array1[0] is Cone" better than? #
 
 array2 are A, B, and C is D.\, \    , # ["A, B, and C is D.", "    "] #
@@ -56,7 +61,7 @@ array3 are Sun, # define array by multiple line. array3 => ["Sun", "Moon", "Eart
     member1 is Hello
     member2 is Watagashi!
 # expand elements of array2 into array4
-array4 are Apple, ${array2}, ${} # array4 is ["Apple", "A, B, and C is D.", "    "] #
+array4 are Apple, ${array2} # array4 is ["Apple", "A, B, and C is D.", "    "] #
 array5 is [Array]
   A,
   B,
@@ -68,38 +73,151 @@ array5 is [Array]
 ref1 is ${str1}
 ref2 is ${num1}
 ref3 is ${obj1}
-ref3_1 is ${member1 in obj1}
+#ref3_1 is ${member1 in obj1}
 ref4 is ${array1}
 ref4_1 is ${0 in array1}
 ref5 is This "${ref1}" is string # ref5 = 'This "Apple is fruits" is string' #
 
-copy1 copy ${str1}
-copy2 copy ${num1}
-copy3 copy ${obj1}
-copy3 copy ${member1 in obj1}
-copy4 copy ${array1}
-copy5 copy ${0 in array1}
+
+copy1 copy str1
+copy2 copy num1
+copy3 copy obj1
+copy3 copy member1 in obj1
+copy4 copy array1
+copy5 copy 0 in array1
+
+n is 100
+bool1 judge
+  n equal 100
+bool2 judge n not_equal 100
+bool3 judge n less 100
+bool4 judge n less_equal 100
+bool5 judge n greater 100
+bool6 judge n greater_equal 100
+bool7 judge bool1, bool2, bool3
+bool8 judge
+  bool1 or
+  bool2,
+  bool3
+bool9 judge not bool2
+bool10 deny !bool2
 
 ##
   Project setting example
 ##
 
+# like if
+:if 
+  str1 equal Apple
+    str1 is Apple2
+  str1 less Orange or
+  str1 greater Grape
+    str1 is Orange
+  else
+    str1 is Unknown
+
+# like switch
+valueIf is Test
+:empty_line
+:if valueIf
+  :local localVar is Test
+  equal localVar
+    :empty_line
+    valueIf is local var test
+  equal Test
+  less Orange or greater Grape
+    valueIf is Orange
+  else
+    valueIf is Unknown
+
+:unless
+  valueIf equal Apple
+    unlessMake is OK
+
+NewObject extend [Object]
+  name is string
+
+objTest is [NewObject]
+  name is Grape
+
+###
+  Function Usage
+###
+testFunc define_function
+  to_receive A, B is string
+    C is string by_default Default Text, D by_default
+      MultiLine
+      Comment
+  to_capture
+    str1, ref str2
+  with_contents
+    localVar1 is ${A}, ${B} and ${C} are ${D}!
+    :send ${localVar1} and str1 is ${str1}, ${str2}
+
+getName define_function
+  to_receive obj
+  with_contents
+    :send ${name in obj}
+
+:testFunc by_using 100, Orange, CString, pass_to returnValue1, returnValue1_2
+
+returnValue2 is noneValue
+:testFunc
+  by_using
+    100, Orange
+  pass_to
+    returnValue2, returnValue2_2
+  
+returnValue3 receive
+  first from getName
+    by_using objTest
+
+###
+  Coroutine Usage
+###
+testCoroutine define_function
+  to_receive value
+  with_contents
+    :send First ${value}
+    value is \${value}2
+    :send Second ${value}
+    :pass_to var2
+    :if var2
+      equal stop
+        :finish suspend function. ${var2}
+    :send complete function ${var2}
+
+coroutine1 is [testCoroutine]
+  by_using Apple
+value1_1 receive first from coroutine1
+value1_2 receive first from coroutine1
+value1_3 receive first from coroutine1 by_using stop
+
+# define Project
+
+libraryPrefix is lib
+librarySuffix is -vc141-mt-s-x64-1_67
+
 watagashi is [Project]
   type is exe
-  releaseNumber is 0
   targets are [Directory]
       path is src
       extensions are cpp, c
       ignores are main.c
+  fileFilters are [FileFilter]
+      filepath is @main.cpp
+      preprocess are echo compile main.cpp
+      postprocess are echo finish to compile main.cpp
   compiler is clang++
-  compileOptions are -O2
-  linkLibraries are boost_system, boost_filesystem,
-    boost_program_options, boost_stacktrace
+  compileOptions are -O2, -std=c++17
+  includeDirectories are C:\Boost\include\boost-1_67
+  linkLibraries are ${libraryPrefix}boost_system${librarySuffix}, ${libraryPrefix}boost_filesystem${librarySuffix}, ${libraryPrefix}boost_program_options${librarySuffix}
+  libraryDirectories are C:\Boost\lib
   outputName is watagashi
   outputPath is output
   intermediatePath is intermediate
   preprocess is echo Hello Watagashi
-    echo Var1 variable is ${Var1}
+    echo str1 variable is "${str1}"
 
 # debug version
 watagashi_debug copy watagashi

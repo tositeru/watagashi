@@ -15,42 +15,7 @@ namespace boost::filesystem {
 namespace watagashi
 {
 struct ProgramOptions;
-class SpecialVariables;
-class BuildEnviroment;
 class ProcessServer;
-
-namespace config {
-    struct RootConfig;
-    struct Project;
-    struct BuildSetting;
-    struct TargetDirectory;
-    class ItemHierarchy;
-}
-    
-class Builder
-{    
-public:
-    void build(const std::shared_ptr<config::RootConfig>& pRootConfig, const std::shared_ptr<ProgramOptions>& pOpt);
-    void clean(const std::shared_ptr<config::RootConfig>& pRootConfig, const std::shared_ptr<ProgramOptions>& pOpt);
-    void listupFiles(const std::shared_ptr<config::RootConfig>& pRootConfig, const std::shared_ptr<ProgramOptions>& pOpt);
-    void install(const std::shared_ptr<config::RootConfig>& pRootConfig, const std::shared_ptr<ProgramOptions>& pOpt);
-    void showProjects(const std::shared_ptr<config::RootConfig>& pRootConfig, const std::shared_ptr<ProgramOptions>& pOpt);
-    
-private:
-    enum class BuildResult {
-        eSUCCESS,
-        eSKIP_LINK,
-        eFAILED,
-    };
-    BuildResult buildInDirectory(
-        std::vector<std::string>& outLinkTargets,
-        BuildEnviroment& env,
-        ProcessServer& processServer);
-        
-    void linkObjs(
-        BuildEnviroment& env,
-        const std::vector<std::string>& linkTargets);
-};
 
 namespace data
 {
@@ -58,10 +23,10 @@ namespace data
     struct Compiler;
 }
 
-class Builder_ final
+class Builder final
 {
-    Builder_(Builder_ const&) = delete;
-    Builder_& operator=(Builder_ const&) = delete;
+    Builder(Builder const&) = delete;
+    Builder& operator=(Builder const&) = delete;
 
 public:
     struct Scope
@@ -72,7 +37,7 @@ public:
     };
 
 public:
-    Builder_(data::Project const& project, ProgramOptions const& options);
+    Builder(data::Project const& project, ProgramOptions const& options);
 
     void addCompiler(data::Compiler const& compiler);
     void addCompiler(data::Compiler && compiler);
